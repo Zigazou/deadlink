@@ -1,0 +1,73 @@
+{-|
+Module      : Link
+Description : A link!
+Copyright   : (c) Frédéric BISSON, 2016
+License     : GPL-3
+Maintainer  : zigazou@free.fr
+Stability   : experimental
+Portability : POSIX
+
+A link!
+-}
+module Network.Link.Link
+( Link ( UncheckedLink, ucURI
+       , CheckedLink, chURI, chHTTPCode, chContentType, chCheckDate
+       , ParsedLink, paURI, paHTTPCode, paContentType, paParseDate
+       )
+, linkURI
+, makeLink
+, absolute
+, pertinent
+, url
+)
+where
+
+import Network.URI ( URI(uriScheme, uriAuthority, uriPath)
+                   , parseURIReference, relativeTo, uriToString
+                   )
+import Data.List.Utils (startswith)
+import Data.Time (UTCTime)
+
+-- | A link
+data Link = UncheckedLink { ucURI :: URI }
+          | CheckedLink { chURI :: URI
+                        , chHTTPCode :: Int
+                        , chContentType :: String
+                        , chCheckDate :: UTCTime
+                        }
+          | ParsedLink { paURI :: URI
+                       , paHTTPCode :: Int
+                       , paContentType :: String
+                       , paParseDate :: UTCTime
+                       }
+
+linkURI :: Link -> URI
+linkURI (UncheckedLink uri) = uri
+linkURI (CheckedLink uri _ _ _) = uri
+linkURI (ParsedLink uri _ _ _) = uri
+
+-- | Create a Link based on a URI
+makeLink :: URI -> Link
+makeLink = UncheckedLink
+
+-- | Given a base URI, get an absolute URI from a String
+absolute :: Link -> String -> Maybe Link
+absolute baseLink path = do
+    pathURI <- parseURIReference path
+    return $ makeLink (relativeTo pathURI $ linkURI baseLink)
+
+-- | Given a base Link and a Link, tells if the URI is pertinent or should be
+--   ignored.
+pertinent :: Link -> Link -> Bool
+pertinent baseLink link
+    | not (startswith "http" $ uriScheme uri) = False
+    | uriScheme uri    /= uriScheme base    = True
+    | uriAuthority uri /= uriAuthority base = True
+    | uriPath uri      /= uriPath base      = True
+    | otherwise                             = False
+    where uri = linkURI link
+          base = linkURI baseLink
+
+-- | Transform a Link into a String
+url :: Link -> String
+url link = uriToString id (linkURI link) ""
