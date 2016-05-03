@@ -22,7 +22,7 @@ module Network.Link.Link
 )
 where
 
-import Network.URI ( URI(uriScheme, uriAuthority, uriPath)
+import Network.URI ( URI(uriScheme, uriAuthority, uriPath, uriFragment)
                    , parseURIReference, relativeTo, uriToString
                    )
 import Data.List.Utils (startswith)
