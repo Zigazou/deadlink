@@ -11,13 +11,16 @@ This module simply holds settings for the DeadLink application.
 -}
 module Settings
 ( userAgent
+, databaseFileName
 , curlLoadOptions
 , curlCheckOptions
 )
 where
 
+import Data.Text (Text, pack)
 import Network.Curl ( CurlOption ( CurlUserAgent, CurlTimeout
                                  , CurlFollowLocation, CurlNoBody
+                                 , CurlFailOnError
                                  )
                     )
 
@@ -25,12 +28,17 @@ import Network.Curl ( CurlOption ( CurlUserAgent, CurlTimeout
 userAgent :: String
 userAgent = "Zigazou's DeadLink finder"
 
+-- | Database file
+databaseFileName :: Text
+databaseFileName = pack "deadlink.db"
+
 -- | Curl options used when loading content
 curlLoadOptions :: [CurlOption]
 curlLoadOptions =
     [ CurlUserAgent userAgent
     , CurlTimeout 10
     , CurlFollowLocation False
+    , CurlFailOnError False
     ]
 
 -- | Curl options used when checking content
