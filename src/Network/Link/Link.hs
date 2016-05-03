@@ -46,9 +46,10 @@ linkURI (UncheckedLink uri) = uri
 linkURI (CheckedLink uri _ _ _) = uri
 linkURI (ParsedLink uri _ _ _) = uri
 
--- | Create a Link based on a URI
+-- | Create a Link based on a URI. Discard URI fragment as it is not relevant
+--   and will avoid unnecessary checks.
 makeLink :: URI -> Link
-makeLink = UncheckedLink
+makeLink uri = UncheckedLink uri { uriFragment = "" }
 
 -- | Given a base URI, get an absolute URI from a String
 absolute :: Link -> String -> Maybe Link
