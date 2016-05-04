@@ -65,10 +65,10 @@ absolute baseLink path = do
 pertinent :: Link -> Link -> Bool
 pertinent baseLink link
     | not (startswith "http" $ uriScheme uri) = False
-    | uriScheme uri    /= uriScheme base    = True
-    | uriAuthority uri /= uriAuthority base = True
-    | uriPath uri      /= uriPath base      = True
-    | otherwise                             = False
+    | uriScheme uri    /= uriScheme base      = True
+    | uriAuthority uri /= uriAuthority base   = True
+    | uriPath uri      /= uriPath base        = True
+    | otherwise                               = False
     where uri = linkURI link
           base = linkURI baseLink
 

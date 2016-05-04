@@ -76,4 +76,3 @@ parse (CheckedLink uri rc ct _) = do
                         , paParseDate = parseDate
                         }
 parse link = return link
-
