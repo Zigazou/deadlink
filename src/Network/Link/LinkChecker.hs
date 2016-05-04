@@ -29,7 +29,8 @@ import Network.Link.Link
     ( Link ( UncheckedLink, ucURI
            , CheckedLink, chURI, chHTTPCode, chContentType, chCheckDate
            , ParsedLink, paURI, paHTTPCode, paContentType, paParseDate
-           ), url, absolute
+           )
+           , url, absolute, isReserved
     )
 
 -- | Get all links from an HTML page
@@ -40,22 +41,30 @@ loadLinks baseLink = do
 
 -- | Checks for a Link viability
 verify :: Link -> IO Link
-verify link@(UncheckedLink _) = do
-    resp <- curlGetResponse_ (url link) curlCheckOptions :: IO CurlResponse
+verify link@(UncheckedLink _)
+    | isReserved link =  do
+        checkDate <- getCurrentTime
+        return $ CheckedLink { chURI = ucURI link
+                            , chHTTPCode = 404
+                            , chContentType = ""
+                            , chCheckDate = checkDate
+                            }
+    | otherwise = do
+        resp <- curlGetResponse_ (url link) curlCheckOptions :: IO CurlResponse
 
-    checkDate <- getCurrentTime
+        checkDate <- getCurrentTime
 
-    let httpCode = respStatus resp
-        contentType = case lookup "Content-Type" (respHeaders resp) of
-                           Nothing -> ""
-                           Just (' ':str) -> str
-                           Just str -> str
+        let httpCode = respStatus resp
+            contentType = case lookup "Content-Type" (respHeaders resp) of
+                            Nothing -> ""
+                            Just (' ':str) -> str
+                            Just str -> str
 
-    return $ CheckedLink { chURI = ucURI link
-                         , chHTTPCode = httpCode
-                         , chContentType = contentType
-                         , chCheckDate = checkDate
-                         }
+        return $ CheckedLink { chURI = ucURI link
+                            , chHTTPCode = httpCode
+                            , chContentType = contentType
+                            , chCheckDate = checkDate
+                            }
 verify link = return link
 
 parse :: Link -> IO Link

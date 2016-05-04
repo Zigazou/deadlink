@@ -19,13 +19,16 @@ module Network.Link.Link
 , absolute
 , pertinent
 , url
+, isReserved
 )
 where
 
-import Network.URI ( URI(uriScheme, uriAuthority, uriPath, uriFragment)
+import Network.URI ( URI(URI, uriScheme, uriAuthority, uriPath, uriFragment)
+                   , URIAuth(URIAuth)
                    , parseURIReference, relativeTo, uriToString
                    )
-import Data.List.Utils (startswith)
+import Data.List.Utils (startswith, endswith)
+import Data.Char (toUpper)
 import Data.Time (UTCTime)
 
 -- | A link
@@ -72,3 +75,26 @@ pertinent baseLink link
 -- | Transform a Link into a String
 url :: Link -> String
 url link = uriToString id (linkURI link) ""
+
+-- | Tells if a link points to a reserved domain name
+isReserved :: Link -> Bool
+isReserved (UncheckedLink (URI _ (Just uriAuth) _ _ _)) =
+    isReserved_ uriAuth
+isReserved (CheckedLink (URI _ (Just uriAuth) _ _ _) _ _ _) =
+    isReserved_ uriAuth
+isReserved (ParsedLink (URI _ (Just uriAuth) _ _ _) _ _ _) =
+    isReserved_ uriAuth
+isReserved _ = False
+
+isReserved_ :: URIAuth -> Bool
+isReserved_ (URIAuth _ regName _)
+    | domain rn "test"        = True
+    | domain rn "example"     = True
+    | domain rn "invalid"     = True
+    | domain rn "localhost"   = True
+    | domain rn "example.com" = True
+    | domain rn "example.net" = True
+    | domain rn "example.org" = True
+    | otherwise               = False
+    where domain str tl = str == tl || endswith tl ('.':str)
+          rn = toUpper <$> regName
