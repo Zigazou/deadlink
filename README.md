@@ -108,6 +108,11 @@ Its output looks like:
 Notes
 -----
 
+`deadlink` will take a lot of time for large sites. This is because `deadlink`
+does only one HTTP query at a time in order to be light on web servers.
+
+`deadlink` user agent is "Zigazou's DeadLink finder".
+
 `deadlink` uses cURL for every HTTP related action. Therefore, it supports
 proxy settings via the `http_proxy` and `https_proxy` environment variables.
 
@@ -123,3 +128,6 @@ be specified.
 
 Opening a Deadlink database while `deadlink` is working, even if it’s only for
 reading, can avoid `deadlink` to update it.
+
+Reserved top-level and second-level domain name like `example.com` or
+`localhost` are considered dead links.

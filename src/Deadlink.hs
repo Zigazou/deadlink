@@ -92,16 +92,15 @@ deadlinkIteration base = do
 -- | Loop again and again till there is no more links to check or page to
 --   parse. It is the responsibility of the caller to call `withCurlDo` before
 --   calling this function.
-deadlinkLoop :: Link -> IO ()
-deadlinkLoop baselink = do
-     db <- open databaseFileName
-     (pageCount, linkCount) <- remainingJob db baselink
-     close db
+deadlinkLoop :: Int -> Link -> IO ()
+deadlinkLoop iter baselink = do
+    putStrLn $ "Iteration " ++ show iter
 
-     putStrLn $ show pageCount ++ " remaining pages to parse"
-     putStrLn $ show linkCount ++ " remaining links to check"
+    db <- open databaseFileName
+    (pageCount, linkCount) <- remainingJob db baselink
+    close db
 
-     if pageCount == 0 && linkCount == 0
+    if pageCount == 0 && linkCount == 0
         then putStrLn "Finished!"
-        else deadlinkIteration baselink >> deadlinkLoop baselink
+        else deadlinkIteration baselink >> deadlinkLoop (iter + 1) baselink
 
