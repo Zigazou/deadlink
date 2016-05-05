@@ -20,7 +20,19 @@ tagToReference (TagOpen "link" attrs) = lookup "href" attrs
 tagToReference (TagOpen "script" attrs) = lookup "src" attrs
 tagToReference _ = Nothing
 
+-- | Find base tag if it exists
+findBase :: [Tag String] -> String
+findBase (TagOpen "base" attrs:_) = case lookup "href" attrs of
+                                         Nothing -> ""
+                                         Just str -> str
+findBase (_:tags) = findBase tags
+findBase [] = ""
+
 -- | Given an HTML string, find all references to resources (links, scripts,
 --   etc.)
-findReferences :: String -> [String]
-findReferences = catMaybes . fmap tagToReference . parseTags
+findReferences :: String -> (String, [String])
+findReferences document =
+    ( findBase tags
+    , catMaybes (tagToReference <$> tags)
+    )
+    where tags = parseTags document

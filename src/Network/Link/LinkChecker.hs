@@ -20,7 +20,7 @@ import Network.Curl ( CurlResponse, curlGetResponse_
                     , respHeaders, respStatus, respBody
                     )
 
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Time (getCurrentTime)
 
 import Data.ReferenceExtractor (findReferences)
@@ -41,9 +41,11 @@ loadLinks baseLink = do
                         Nothing -> Nothing
                         Just (' ':adr) -> absolute baseLink adr
                         Just adr -> absolute baseLink adr
+        (newBase, references) = findReferences (respBody resp)
+        baseLink' = fromMaybe baseLink (absolute baseLink newBase)
 
     return $ catMaybes ( locationM
-                       : (absolute baseLink <$> findReferences (respBody resp))
+                       : (absolute baseLink' <$> references)
                        )
 
 -- | Checks for a Link viability
@@ -74,6 +76,7 @@ verify link@(UncheckedLink _)
                            }
 verify link = return link
 
+-- | Mark a link as parsed at current time
 parse :: Link -> IO Link
 parse (CheckedLink uri rc ct _) = do
     parseDate <- getCurrentTime

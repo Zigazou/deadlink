@@ -39,18 +39,21 @@ checkPage baseLink = do
 
     return baseLinkUpdated
 
+-- | Initializes the database with the root element
 deadlinkInit :: Link -> IO ()
 deadlinkInit link = do
     db <- open databaseFileName
     _ <- insertLink db (makeLink nullURI) link
     close db
 
+-- | Group execution of actions
 actionPartition :: Int -> [b] -> ([b] -> IO ()) -> IO ()
 actionPartition _ [] _ = return ()
 actionPartition nb list action = do
     action (take nb list)
     actionPartition nb (drop nb list) action
 
+-- | An iteration consists of links checking followed by pages parsing
 deadlinkIteration :: Link -> IO ()
 deadlinkIteration base = do
     db <- open databaseFileName
@@ -106,4 +109,3 @@ deadlinkLoop iter baselink = do
     if pageCount == 0 && linkCount == 0
         then putStrLn "Finished!"
         else deadlinkIteration baselink >> deadlinkLoop (iter + 1) baselink
-
