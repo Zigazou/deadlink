@@ -54,6 +54,10 @@ running:
 
     sqlite3 deadlink.db
 
+Here’s the database schema:
+
+![Database schema](db/dbschema.png)
+
 Query examples:
 
     -- Get number of links in the database
@@ -76,6 +80,9 @@ Query examples:
     FROM   link, parent
     WHERE  httpcode = 404
     AND    childurl = url;
+
+The `code` is prepopulated with HTTP codes and their descriptions ready to be
+used in your queries.
 
 The `deadlinkstat.bash` script contains more examples of how to query the
 database.
@@ -108,6 +115,8 @@ Its output looks like:
 Notes
 -----
 
+To avoid infinite recursion, `deadlink` is limited to 30 iterations.
+
 `deadlink` will take a lot of time for large sites. This is because `deadlink`
 does only one HTTP query at a time in order to be light on web servers.
 
@@ -131,3 +140,5 @@ reading, can avoid `deadlink` to update it.
 
 Reserved top-level and second-level domain name like `example.com` or
 `localhost` are considered dead links.
+
+Date and time of checking are recorded as UTC.
