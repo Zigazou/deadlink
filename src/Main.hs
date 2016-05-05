@@ -7,7 +7,7 @@ import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.Directory (doesFileExist)
 import System.IO (stderr, hPutStrLn)
-import Control.Monad (when)
+import Control.Monad (when, unless)
 
 import Network.Link.Link (makeLink)
 import Deadlink (deadlinkInit, deadlinkLoop)
@@ -23,7 +23,7 @@ main = do
 
     -- Check for DB
     dbexist <- doesFileExist "deadlink.db"
-    when (not dbexist) $ do
+    unless dbexist $ do
         hPutStrLn stderr "Cannot find deadlink.db"
         exitFailure
 

@@ -77,8 +77,39 @@ Query examples:
     WHERE  httpcode = 404
     AND    childurl = url;
 
+The `deadlinkstat.bash` script contains more examples of how to query the
+database.
+
+Its output looks like:
+
+    Statistics for http://www.example.com/
+
+    - Links: 24
+    - External links: 10
+    - HTML pages: 12
+    - Checked links: 24
+    - Most used dead links:
+      - http://www.example.org/
+    - HTTP codes:
+      - 200 OK: 21
+      - 301 Moved Permanently: 1
+      - 302 Moved Temporarily: 2
+    - Content types:
+      - [unknown]: 4
+      - application/javascript: 1
+      - application/pdf: 4
+      - image/x-icon: 1
+      - text/css: 2
+      - text/html: 9
+      - text/html; charset=ISO-8859-1: 1
+      - text/html; charset=UTF-8: 1
+      - text/html; charset=utf-8: 1
+
 Notes
 -----
+
+`deadlink` uses cURL for every HTTP related action. Therefore, it supports
+proxy settings via the `http_proxy` and `https_proxy` environment variables.
 
 Writes to the database are done after 50 links checked/parsed. If `deadlink`
 is stopped, there is potentially a maximum of 50 links that will need to be
@@ -89,3 +120,6 @@ belonging to the base URL will be parsed.
 
 Everytime `deadlink` needs to be resumed, it requires the same base URL to
 be specified.
+
+Opening a Deadlink database while `deadlink` is working, even if it’s only for
+reading, can avoid `deadlink` to update it.

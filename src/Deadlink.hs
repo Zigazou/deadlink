@@ -6,7 +6,7 @@ module Deadlink
 where
 
 import Network.URI (nullURI)
-import System.IO (stdout, hFlush, hPutChar)
+import System.IO (stdout, hFlush)
 
 import Database.SQLite3 (open, close)
 
@@ -18,12 +18,14 @@ import Database.LinkSQL ( getUncheckedLinks, getUnparsedHTMLLinks, updateLink
                         , startTransaction, endTransaction
                         )
 
+import Control.Monad (liftM)
+
 import Settings (databaseFileName)
 
 checkPage :: Link -> IO Link
 checkPage baseLink = do
     -- Load links from web page
-    links <- loadLinks baseLink >>= return . filter (pertinent baseLink)
+    links <- liftM (filter (pertinent baseLink)) (loadLinks baseLink)
 
     db <- open databaseFileName
 
@@ -84,7 +86,7 @@ deadlinkIteration base = do
     putStr "\n"
 
     where tick = do
-            hPutChar stdout '.'
+            putChar '.'
             hFlush stdout
 
 -- | Loop again and again till there is no more links to check or page to

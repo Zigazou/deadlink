@@ -1,8 +1,21 @@
 #!/bin/bash
 
 function execdb() {
-    echo "$1" | sqlite3 deadlink.db
+    echo "$1" | sqlite3 "$DATABASE"
 }
+
+if [ "$1" = "" ]
+then
+    DATABASE="deadlink.db"
+else
+    DATABASE="$1"
+fi
+
+if [ ! -f "$DATABASE" ]
+then
+    printf -- "Database '%s' not found!\n" "$DATABASE"
+    exit 1
+fi
 
 baselink=$(execdb "
     SELECT childurl
@@ -22,35 +35,17 @@ counthtmlpage=$(execdb "
     WHERE    contenttype LIKE 'text/html%';
 ")
 
-count404link=$(execdb "
-    SELECT COUNT(*)
-    FROM   link
-    WHERE  httpcode = 404;
-")
-
-count403link=$(execdb "
-    SELECT COUNT(*)
-    FROM   link
-    WHERE  httpcode = 403;
-")
-
-count301link=$(execdb "
-    SELECT COUNT(*)
-    FROM   link
-    WHERE  httpcode = 301;
-")
-
-count302link=$(execdb "
-    SELECT COUNT(*)
-    FROM   link
-    WHERE  httpcode = 302;
-")
-
 countcheckedlink=$(execdb "
     SELECT COUNT(*)
     FROM   link
     WHERE  checkdate IS NOT NULL
     OR     parsedate IS NOT NULL;
+")
+
+countexternallink=$(execdb "
+    SELECT COUNT(*)
+    FROM   link
+    WHERE  url NOT LIKE '$baselink%';
 ")
 
 mostuseddeadlink=$(execdb "
@@ -62,23 +57,35 @@ mostuseddeadlink=$(execdb "
     HAVING   COUNT(parenturl) > 30;
 ")
 
-otherhttpcode=$(execdb "
-    SELECT   httpcode, COUNT(*)
+httpcode=$(execdb "
+    SELECT   '  - '
+          || code.httpcode
+          || ' '
+          || code.description
+          || ': '
+          || COUNT(*)
+    FROM     link, code
+    WHERE    code.httpcode = link.httpcode
+    GROUP BY link.httpcode
+    ORDER BY link.httpcode ASC;
+")
+
+linktype=$(execdb "
+    SELECT   '  - '
+          || CASE WHEN contenttype = '' THEN '[unknown]' ELSE contenttype END
+          || ': '
+          || COUNT(*)
     FROM     link
-    WHERE    httpcode NOT IN (404, 403, 301, 302)
-    GROUP BY httpcode
-    ORDER BY httpcode ASC;
+    GROUP BY contenttype;
 ")
 
 printf -- '\nStatistics for %s\n\n' "$baselink"
 printf -- '- Links: %d\n' "$countlink"
+printf -- '- External links: %d\n' "$countexternallink"
 printf -- '- HTML pages: %d\n' "$counthtmlpage"
-printf -- '- 404 links: %d\n' "$count404link"
-printf -- '- 403 links: %d\n' "$count403link"
-printf -- '- 301 links: %d\n' "$count301link"
-printf -- '- 302 links: %d\n' "$count302link"
 printf -- '- Checked links: %d\n' "$countcheckedlink"
 printf -- '- Most used dead links:\n%s\n' "$mostuseddeadlink"
-printf -- '- Other HTTP codes:\n%s\n' "$otherhttpcode"
+printf -- '- HTTP codes:\n%s\n' "$httpcode"
+printf -- '- Content types:\n%s\n' "$linktype"
 
 printf -- '\n'
