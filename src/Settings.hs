@@ -19,7 +19,7 @@ where
 
 import Data.Text (Text, pack)
 import Network.Curl ( CurlOption ( CurlUserAgent, CurlTimeout
-                                 , CurlFollowLocation, CurlNoBody
+                                 , CurlFollowLocation, CurlRange
                                  , CurlFailOnError
                                  )
                     )
@@ -43,4 +43,5 @@ curlLoadOptions =
 
 -- | Curl options used when checking content
 curlCheckOptions :: [CurlOption]
-curlCheckOptions = CurlNoBody True : curlLoadOptions
+curlCheckOptions = CurlRange "0-255"
+                 : curlLoadOptions
