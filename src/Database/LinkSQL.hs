@@ -100,7 +100,6 @@ getUnparsedHTMLLinks db base = do
     req <- prepare db "SELECT url, httpcode, contenttype, checkdate \
                       \FROM link \
                       \WHERE contenttype LIKE 'text/html%' \
-                      \AND   httpcode < 300 \
                       \AND   url LIKE :base \
                       \AND   parsedate IS NULL;"
 

@@ -16,8 +16,8 @@ module Network.Link.LinkChecker
 )
 where
 
-import Network.Curl ( CurlResponse, curlGetString, curlGetResponse_
-                    , respHeaders, respStatus
+import Network.Curl ( CurlResponse, curlGetResponse_
+                    , respHeaders, respStatus, respBody
                     )
 
 import Data.Maybe (catMaybes)
@@ -36,8 +36,15 @@ import Network.Link.Link
 -- | Get all links from an HTML page
 loadLinks :: Link -> IO [Link]
 loadLinks baseLink = do
-    (_, content) <- curlGetString (url baseLink) curlLoadOptions
-    return $ catMaybes (absolute baseLink <$> findReferences content)
+    resp <- curlGetResponse_ (url baseLink) curlLoadOptions
+    let locationM = case lookup "Location" (respHeaders resp) of
+                        Nothing -> Nothing
+                        Just (' ':adr) -> absolute baseLink adr
+                        Just adr -> absolute baseLink adr
+
+    return $ catMaybes ( locationM
+                       : (absolute baseLink <$> findReferences (respBody resp))
+                       )
 
 -- | Checks for a Link viability
 verify :: Link -> IO Link

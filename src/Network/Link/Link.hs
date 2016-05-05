@@ -43,6 +43,7 @@ data Link = UncheckedLink { ucURI :: URI }
                        , paContentType :: String
                        , paParseDate :: UTCTime
                        }
+          deriving (Show, Eq)
 
 linkURI :: Link -> URI
 linkURI (UncheckedLink uri) = uri
