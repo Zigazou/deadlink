@@ -33,5 +33,5 @@ main = do
              let baselink = makeLink uri
 
              deadlinkInit baselink
-             deadlinkLoop baselink
+             deadlinkLoop 0 baselink
 

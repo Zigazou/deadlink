@@ -44,11 +44,11 @@ verify :: Link -> IO Link
 verify link@(UncheckedLink _)
     | isReserved link =  do
         checkDate <- getCurrentTime
-        return $ CheckedLink { chURI = ucURI link
-                            , chHTTPCode = 404
-                            , chContentType = ""
-                            , chCheckDate = checkDate
-                            }
+        return CheckedLink { chURI = ucURI link
+                           , chHTTPCode = 404
+                           , chContentType = ""
+                           , chCheckDate = checkDate
+                           }
     | otherwise = do
         resp <- curlGetResponse_ (url link) curlCheckOptions :: IO CurlResponse
 
@@ -60,19 +60,19 @@ verify link@(UncheckedLink _)
                             Just (' ':str) -> str
                             Just str -> str
 
-        return $ CheckedLink { chURI = ucURI link
-                            , chHTTPCode = httpCode
-                            , chContentType = contentType
-                            , chCheckDate = checkDate
-                            }
+        return CheckedLink { chURI = ucURI link
+                           , chHTTPCode = httpCode
+                           , chContentType = contentType
+                           , chCheckDate = checkDate
+                           }
 verify link = return link
 
 parse :: Link -> IO Link
 parse (CheckedLink uri rc ct _) = do
     parseDate <- getCurrentTime
-    return $ ParsedLink { paURI = uri
-                        , paHTTPCode = rc
-                        , paContentType = ct
-                        , paParseDate = parseDate
-                        }
+    return ParsedLink { paURI = uri
+                      , paHTTPCode = rc
+                      , paContentType = ct
+                      , paParseDate = parseDate
+                      }
 parse link = return link

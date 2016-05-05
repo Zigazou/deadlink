@@ -63,7 +63,7 @@ deadlinkIteration base = do
     -- Update links states. It works 50 links by 50 links to overcome a bug
     -- which appears when too much links must be recorded
     actionPartition 50 uncheckeds $ \list -> do
-        linksToUpdate <- mapM ((tick >>) . verify) list
+        linksToUpdate <- mapM (tick verify) list
         startTransaction db
         mapM_ (updateLink db) linksToUpdate
         endTransaction db
@@ -76,7 +76,7 @@ deadlinkIteration base = do
     -- Update pages states. It works 50 links by 50 links to overcome a bug
     -- which appears when too much pages must be recorded
     actionPartition 50 unparseds $ \list -> do
-        pagesToUpdate <- mapM ((tick >>) . checkPage) list
+        pagesToUpdate <- mapM (tick checkPage) list
         startTransaction db
         mapM_ (updateLink db) pagesToUpdate
         endTransaction db
@@ -85,14 +85,17 @@ deadlinkIteration base = do
 
     putStr "\n"
 
-    where tick = do
+    where tick action l = do
             putChar '.'
+            --putStrLn (url l)
             hFlush stdout
+            action l
 
 -- | Loop again and again till there is no more links to check or page to
 --   parse. It is the responsibility of the caller to call `withCurlDo` before
 --   calling this function.
 deadlinkLoop :: Int -> Link -> IO ()
+deadlinkLoop 30 _ = putStrLn "31 iterations, I stop here!"
 deadlinkLoop iter baselink = do
     putStrLn $ "Iteration " ++ show iter
 

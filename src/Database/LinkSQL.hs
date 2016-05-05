@@ -76,7 +76,9 @@ populate :: [Link] -> Statement -> IO [Link]
 populate links req = do
     result <- step req
     case result of
-        Done -> return []
+        Done -> do
+            finalize req
+            return []
         Row -> do
             cols <- mapM (column req . ColumnIndex) [0 .. 4]
             let linkM = fromSQLite3C cols :: Maybe Link
@@ -91,23 +93,20 @@ getUncheckedLinks db = do
                       \WHERE checkdate IS NULL \
                       \AND   parsedate IS NULL;"
 
-    links <- populate [] req
-    finalize req
-    return links
+    populate [] req
 
 getUnparsedHTMLLinks :: Database -> Link -> IO [Link]
 getUnparsedHTMLLinks db base = do
     req <- prepare db "SELECT url, httpcode, contenttype, checkdate \
                       \FROM link \
                       \WHERE contenttype LIKE 'text/html%' \
+                      \AND   httpcode < 300 \
                       \AND   url LIKE :base \
                       \AND   parsedate IS NULL;"
 
     bindNamed req [ (":base", toSQLite3S $ url base ++ "%") ]
 
-    links <- populate [] req
-    finalize req
-    return links
+    populate [] req
 
 remainingJob :: Database -> Link -> IO (Int, Int)
 remainingJob db base = do
