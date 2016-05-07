@@ -29,6 +29,7 @@ executable deadlink
                        bytestring,
                        time,
                        direct-sqlite,
-                       directory
+                       directory,
+                       hashable
   hs-source-dirs:      src
   default-language:    Haskell2010

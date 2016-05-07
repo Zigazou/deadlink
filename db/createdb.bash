@@ -25,6 +25,7 @@ sqlite3 deadlink.db <<EOF
 
     CREATE TABLE parent ( parenturl TEXT
                         , childurl TEXT
+                        , iteration INTEGER
                         , PRIMARY KEY (parenturl, childurl)
                         );
 

@@ -10,7 +10,7 @@ import System.IO (stderr, hPutStrLn)
 import Control.Monad (when, unless)
 
 import Network.Link.Link (makeLink)
-import Deadlink (deadlinkInit, deadlinkLoop)
+import Deadlink (deadlinkInit, deadlinkLoop, getCurrentIteration)
 
 main :: IO ()
 main = do
@@ -32,6 +32,7 @@ main = do
          Just uri -> withCurlDo $ do
              let baselink = makeLink uri
 
-             deadlinkInit baselink
-             deadlinkLoop 0 baselink
+             iteration <- getCurrentIteration
 
+             deadlinkInit baselink
+             deadlinkLoop iteration baselink

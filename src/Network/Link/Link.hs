@@ -28,7 +28,7 @@ import Network.URI ( URI(URI, uriScheme, uriAuthority, uriPath, uriFragment)
                    , parseURIReference, relativeTo, uriToString
                    )
 import Data.List.Utils (startswith, endswith)
-import Data.Char (toUpper)
+import Data.Char (toLower)
 import Data.Time (UTCTime)
 
 -- | A link
@@ -98,4 +98,4 @@ isReserved_ (URIAuth _ regName _)
     | domain rn "example.org" = True
     | otherwise               = False
     where domain str tl = str == tl || endswith tl ('.':str)
-          rn = toUpper <$> regName
+          rn = toLower <$> regName

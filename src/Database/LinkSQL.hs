@@ -15,6 +15,7 @@ module Database.LinkSQL
 , updateLink
 , getUncheckedLinks
 , getUnparsedHTMLLinks
+, getLastIteration
 , remainingJob
 , startTransaction
 , endTransaction
@@ -35,8 +36,8 @@ import Database.ToFromSQLite3
 linkBinding :: Link -> [ (Text, SQLData ) ]
 linkBinding = zip [":url", ":rc", ":ct", ":cd", ":pd"] . toSQLite3C
 
-insertLink :: Database -> Link -> Link -> IO StepResult
-insertLink db parent link = do
+insertLink :: Database -> Int -> Link -> Link -> IO StepResult
+insertLink db iteration parent link = do
     -- Insert the link
     reqLink <- prepare db "INSERT OR IGNORE INTO link \
                           \VALUES (:url, :rc, :ct, :cd, :pd);"
@@ -46,10 +47,11 @@ insertLink db parent link = do
 
     -- Create the parent/children relationship
     reqParent <- prepare db "INSERT OR IGNORE INTO parent \
-                            \VALUES (:parent, :child);"
+                            \VALUES (:parent, :child, :iteration);"
 
-    let parentBinding = [ (":parent", toSQLite3S (linkURI parent))
-                        , (":child", toSQLite3S (linkURI link))
+    let parentBinding = [ (":parent"   , toSQLite3S (linkURI parent))
+                        , (":child"    , toSQLite3S (linkURI link))
+                        , (":iteration", toSQLite3S iteration)
                         ]
 
     bindNamed reqParent parentBinding
@@ -111,10 +113,10 @@ remainingJob :: Database -> Link -> IO (Int, Int)
 remainingJob db base = do
     -- Count the pages to parse
     reqPage <- prepare db "SELECT COUNT(*) \
-                          \FROM link \
-                          \WHERE contenttype LIKE 'text/html%' \
-                          \AND   url LIKE :base \
-                          \AND   parsedate IS NULL;"
+                          \FROM   link \
+                          \WHERE  contenttype LIKE 'text/html%' \
+                          \AND    url LIKE :base \
+                          \AND    parsedate IS NULL;"
 
     bindNamed reqPage [ (":base", toSQLite3S $ url base ++ "%") ]
 
@@ -158,3 +160,22 @@ limitTransaction db maxtransaction action links = do
     mapM_ action (take maxtransaction links)
     endTransaction db
     limitTransaction db maxtransaction action (drop maxtransaction links)
+
+getLastIteration :: Database -> IO Int
+getLastIteration db = do
+    -- Find the latest check date to get the current iteration
+    reqIter <- prepare db "SELECT   iteration \
+                          \FROM     parent \
+                          \ORDER BY iteration DESC \
+                          \LIMIT    1;"
+
+    resultIter <- step reqIter
+    iteration <- case resultIter of
+        Done -> return 0
+        Row -> do
+            (SQLInteger iteration) <- column reqIter (ColumnIndex 0)
+            return $ fromEnum iteration
+
+    finalize reqIter
+
+    return $ iteration + 1

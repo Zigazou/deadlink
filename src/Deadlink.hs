@@ -2,6 +2,7 @@
 module Deadlink
 ( deadlinkLoop
 , deadlinkInit
+, getCurrentIteration
 )
 where
 
@@ -15,22 +16,29 @@ import Network.Link.LinkChecker (verify, parse, loadLinks)
 
 import Database.LinkSQL ( getUncheckedLinks, getUnparsedHTMLLinks, updateLink
                         , insertLink, limitTransaction, remainingJob
-                        , startTransaction, endTransaction
+                        , startTransaction, endTransaction, getLastIteration
                         )
 
 import Control.Monad (liftM)
 
 import Settings (databaseFileName)
 
-checkPage :: Link -> IO Link
-checkPage baseLink = do
+getCurrentIteration :: IO Int
+getCurrentIteration = do
+    db <- open databaseFileName
+    iteration <- getLastIteration db
+    close db
+    return iteration
+
+checkPage :: Int -> Link -> IO Link
+checkPage iteration baseLink = do
     -- Load links from web page
     links <- liftM (filter (pertinent baseLink)) (loadLinks baseLink)
 
     db <- open databaseFileName
 
     -- Insert pertinent links in the database
-    limitTransaction db 50 (insertLink db baseLink) links
+    limitTransaction db 50 (insertLink db iteration baseLink) links
 
     -- Update current link
     baseLinkUpdated <- parse baseLink
@@ -43,7 +51,7 @@ checkPage baseLink = do
 deadlinkInit :: Link -> IO ()
 deadlinkInit link = do
     db <- open databaseFileName
-    _ <- insertLink db (makeLink nullURI) link
+    _ <- insertLink db 0 (makeLink nullURI) link
     close db
 
 -- | Group execution of actions
@@ -54,8 +62,8 @@ actionPartition nb list action = do
     actionPartition nb (drop nb list) action
 
 -- | An iteration consists of links checking followed by pages parsing
-deadlinkIteration :: Link -> IO ()
-deadlinkIteration base = do
+deadlinkIteration :: Int -> Link -> IO ()
+deadlinkIteration iteration base = do
     db <- open databaseFileName
 
     -- Get unchecked links
@@ -79,7 +87,7 @@ deadlinkIteration base = do
     -- Update pages states. It works 50 links by 50 links to overcome a bug
     -- which appears when too much pages must be recorded
     actionPartition 50 unparseds $ \list -> do
-        pagesToUpdate <- mapM (tick checkPage) list
+        pagesToUpdate <- mapM (tick (checkPage iteration)) list
         startTransaction db
         mapM_ (updateLink db) pagesToUpdate
         endTransaction db
@@ -98,9 +106,9 @@ deadlinkIteration base = do
 --   parse. It is the responsibility of the caller to call `withCurlDo` before
 --   calling this function.
 deadlinkLoop :: Int -> Link -> IO ()
-deadlinkLoop 30 _ = putStrLn "31 iterations, I stop here!"
-deadlinkLoop iter baselink = do
-    putStrLn $ "Iteration " ++ show iter
+deadlinkLoop 15 _ = putStrLn "16 iterations, I stop here!"
+deadlinkLoop iteration baselink = do
+    putStrLn $ "Iteration " ++ show iteration
 
     db <- open databaseFileName
     (pageCount, linkCount) <- remainingJob db baselink
@@ -108,4 +116,6 @@ deadlinkLoop iter baselink = do
 
     if pageCount == 0 && linkCount == 0
         then putStrLn "Finished!"
-        else deadlinkIteration baselink >> deadlinkLoop (iter + 1) baselink
+        else do
+            deadlinkIteration iteration baselink
+            deadlinkLoop (iteration + 1) baselink
