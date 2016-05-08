@@ -25,7 +25,7 @@ import Data.Time ( UTCTime, formatTime, defaultTimeLocale, iso8601DateFormat
 import Data.Text (pack, unpack)
 import Network.URI (URI, parseURI, uriToString)
 
-import Network.Link.Link
+import Data.Link (Link (UncheckedLink, ParsedLink, CheckedLink))
 
 class ToFromSQLite3Simple t where
     toSQLite3S :: t -> SQLData

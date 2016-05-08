@@ -29,7 +29,7 @@ import Database.SQLite3 ( Database, StepResult(Done, Row), Statement
                         , SQLData (SQLInteger), exec
                         )
 
-import Network.Link.Link
+import Data.Link (Link, linkURI, url)
 import Database.ToFromSQLite3
 
 linkBinding :: Link -> [ (Text, SQLData ) ]

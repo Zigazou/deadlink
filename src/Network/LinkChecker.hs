@@ -9,7 +9,7 @@ Portability : POSIX
 
 A link checker
 -}
-module Network.Link.LinkChecker
+module Network.LinkChecker
 ( loadLinks
 , verify
 , parse
@@ -24,7 +24,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Time (getCurrentTime)
 
 import Data.ReferenceExtractor (findReferences)
-import Network.Link.Link
+import Data.Link
     ( Link ( UncheckedLink, ucURI
            , CheckedLink, chURI, chHTTPCode, chContentType, chCheckDate
            , ParsedLink, paURI, paHTTPCode, paContentType, paParseDate

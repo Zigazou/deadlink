@@ -9,7 +9,7 @@ Portability : POSIX
 
 A link!
 -}
-module Network.Link.Link
+module Data.Link
 ( Link ( UncheckedLink, ucURI
        , CheckedLink, chURI, chHTTPCode, chContentType, chCheckDate
        , ParsedLink, paURI, paHTTPCode, paContentType, paParseDate

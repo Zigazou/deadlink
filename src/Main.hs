@@ -9,7 +9,7 @@ import System.Directory (doesFileExist)
 import System.IO (stderr, hPutStrLn)
 import Control.Monad (when, unless)
 
-import Network.Link.Link (makeLink)
+import Data.Link (makeLink)
 import Deadlink (deadlinkInit, deadlinkLoop, getCurrentIteration)
 
 main :: IO ()

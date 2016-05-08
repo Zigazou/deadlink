@@ -11,9 +11,8 @@ import System.IO (stdout, hFlush)
 
 import Database.SQLite3 (open, close)
 
-import Network.Link.Link (Link, makeLink, pertinent)
-import Network.Link.LinkChecker (verify, parse, loadLinks)
-
+import Data.Link (Link, makeLink, pertinent)
+import Network.LinkChecker (verify, parse, loadLinks)
 import Database.LinkSQL ( getUncheckedLinks, getUnparsedHTMLLinks, updateLink
                         , insertLink, remainingJob, startTransaction
                         , endTransaction, getLastIteration
