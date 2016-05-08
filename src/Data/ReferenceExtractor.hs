@@ -12,7 +12,7 @@ A link extractor
 module Data.ReferenceExtractor (findReferences) where
 
 import Text.HTML.TagSoup (Tag(TagOpen), parseTags)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 
 tagToReference :: Tag String -> Maybe String
 tagToReference (TagOpen "a" attrs) = lookup "href" attrs
@@ -22,9 +22,7 @@ tagToReference _ = Nothing
 
 -- | Find base tag if it exists
 findBase :: [Tag String] -> String
-findBase (TagOpen "base" attrs:_) = case lookup "href" attrs of
-                                         Nothing -> ""
-                                         Just str -> str
+findBase (TagOpen "base" attrs:_) = fromMaybe "" (lookup "href" attrs)
 findBase (_:tags) = findBase tags
 findBase [] = ""
 
