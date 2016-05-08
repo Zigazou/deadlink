@@ -19,7 +19,6 @@ module Database.LinkSQL
 , remainingJob
 , startTransaction
 , endTransaction
-, limitTransaction
 )
 where
 
@@ -151,15 +150,6 @@ startTransaction db = exec db "BEGIN;"
 -- | Ends a transaction in SQLite3
 endTransaction :: Database -> IO ()
 endTransaction db = exec db "END;"
-
--- | Limit transaction to a fixed number of query
-limitTransaction :: Database -> Int -> (Link -> IO a) -> [Link] -> IO ()
-limitTransaction _ _ _ [] = return ()
-limitTransaction db maxtransaction action links = do
-    startTransaction db
-    mapM_ action (take maxtransaction links)
-    endTransaction db
-    limitTransaction db maxtransaction action (drop maxtransaction links)
 
 getLastIteration :: Database -> IO Int
 getLastIteration db = do

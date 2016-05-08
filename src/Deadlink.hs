@@ -15,8 +15,8 @@ import Network.Link.Link (Link, makeLink, pertinent)
 import Network.Link.LinkChecker (verify, parse, loadLinks)
 
 import Database.LinkSQL ( getUncheckedLinks, getUnparsedHTMLLinks, updateLink
-                        , insertLink, limitTransaction, remainingJob
-                        , startTransaction, endTransaction, getLastIteration
+                        , insertLink, remainingJob, startTransaction
+                        , endTransaction, getLastIteration
                         )
 
 import Control.Monad (liftM)
@@ -38,7 +38,10 @@ checkPage iteration baseLink = do
     db <- open databaseFileName
 
     -- Insert pertinent links in the database
-    limitTransaction db 50 (insertLink db iteration baseLink) links
+    actionPartition 50 links $ \links' -> do
+        startTransaction db
+        mapM_ (insertLink db iteration baseLink) links'
+        endTransaction db
 
     -- Update current link
     baseLinkUpdated <- parse baseLink
