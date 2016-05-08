@@ -16,7 +16,7 @@ module Network.Link.LinkChecker
 )
 where
 
-import Network.Curl ( CurlResponse, curlGetResponse_
+import Network.Curl ( CurlResponse, CurlOption, curlGetResponse_
                     , respHeaders, respStatus, respBody
                     )
 
@@ -24,7 +24,6 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Time (getCurrentTime)
 
 import Data.ReferenceExtractor (findReferences)
-import Settings (curlCheckOptions, curlLoadOptions)
 import Network.Link.Link
     ( Link ( UncheckedLink, ucURI
            , CheckedLink, chURI, chHTTPCode, chContentType, chCheckDate
@@ -34,13 +33,13 @@ import Network.Link.Link
     )
 
 -- | Get all links from an HTML page
-loadLinks :: Link -> IO [Link]
-loadLinks baseLink = do
-    resp <- curlGetResponse_ (url baseLink) curlLoadOptions
+loadLinks :: [CurlOption] -> Link -> IO [Link]
+loadLinks options baseLink = do
+    resp <- curlGetResponse_ (url baseLink) options
     let locationM = case lookup "Location" (respHeaders resp) of
-                        Nothing -> Nothing
+                        Nothing        -> Nothing
                         Just (' ':adr) -> absolute baseLink adr
-                        Just adr -> absolute baseLink adr
+                        Just adr       -> absolute baseLink adr
         (newBase, references) = findReferences (respBody resp)
         baseLink' = fromMaybe baseLink (absolute baseLink newBase)
 
@@ -49,40 +48,40 @@ loadLinks baseLink = do
                        )
 
 -- | Checks for a Link viability
-verify :: Link -> IO Link
-verify link@(UncheckedLink _)
+verify :: [CurlOption] -> Link -> IO Link
+verify options link@(UncheckedLink _)
     | isReserved link =  do
         checkDate <- getCurrentTime
-        return CheckedLink { chURI = ucURI link
-                           , chHTTPCode = 404
+        return CheckedLink { chURI         = ucURI link
+                           , chHTTPCode    = 404
                            , chContentType = ""
-                           , chCheckDate = checkDate
+                           , chCheckDate   = checkDate
                            }
     | otherwise = do
-        resp <- curlGetResponse_ (url link) curlCheckOptions :: IO CurlResponse
+        resp <- curlGetResponse_ (url link) options :: IO CurlResponse
 
         checkDate <- getCurrentTime
 
         let httpCode = respStatus resp
             contentType = case lookup "Content-Type" (respHeaders resp) of
-                            Nothing -> ""
+                            Nothing        -> ""
                             Just (' ':str) -> str
-                            Just str -> str
+                            Just str       -> str
 
-        return CheckedLink { chURI = ucURI link
-                           , chHTTPCode = httpCode
+        return CheckedLink { chURI         = ucURI link
+                           , chHTTPCode    = httpCode
                            , chContentType = contentType
-                           , chCheckDate = checkDate
+                           , chCheckDate   = checkDate
                            }
-verify link = return link
+verify _ link = return link
 
 -- | Mark a link as parsed at current time
 parse :: Link -> IO Link
 parse (CheckedLink uri rc ct _) = do
     parseDate <- getCurrentTime
-    return ParsedLink { paURI = uri
-                      , paHTTPCode = rc
+    return ParsedLink { paURI         = uri
+                      , paHTTPCode    = rc
                       , paContentType = ct
-                      , paParseDate = parseDate
+                      , paParseDate   = parseDate
                       }
 parse link = return link

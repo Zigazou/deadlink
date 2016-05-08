@@ -33,22 +33,22 @@ import Data.Time (UTCTime)
 
 -- | A link
 data Link = UncheckedLink { ucURI :: URI }
-          | CheckedLink { chURI :: URI
-                        , chHTTPCode :: Int
+          | CheckedLink { chURI         :: URI
+                        , chHTTPCode    :: Int
                         , chContentType :: String
-                        , chCheckDate :: UTCTime
+                        , chCheckDate   :: UTCTime
                         }
-          | ParsedLink { paURI :: URI
-                       , paHTTPCode :: Int
+          | ParsedLink { paURI         :: URI
+                       , paHTTPCode    :: Int
                        , paContentType :: String
-                       , paParseDate :: UTCTime
+                       , paParseDate   :: UTCTime
                        }
           deriving (Show, Eq)
 
 linkURI :: Link -> URI
-linkURI (UncheckedLink uri) = uri
+linkURI (UncheckedLink uri)     = uri
 linkURI (CheckedLink uri _ _ _) = uri
-linkURI (ParsedLink uri _ _ _) = uri
+linkURI (ParsedLink uri _ _ _)  = uri
 
 -- | Create a Link based on a URI. Discard URI fragment as it is not relevant
 --   and will avoid unnecessary checks.

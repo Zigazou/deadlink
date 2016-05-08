@@ -21,7 +21,7 @@ import Database.LinkSQL ( getUncheckedLinks, getUnparsedHTMLLinks, updateLink
 
 import Control.Monad (liftM)
 
-import Settings (databaseFileName)
+import Settings (databaseFileName, curlCheckOptions, curlLoadOptions)
 
 getCurrentIteration :: IO Int
 getCurrentIteration = do
@@ -33,7 +33,8 @@ getCurrentIteration = do
 checkPage :: Int -> Link -> IO Link
 checkPage iteration baseLink = do
     -- Load links from web page
-    links <- liftM (filter (pertinent baseLink)) (loadLinks baseLink)
+    links <- liftM (filter (pertinent baseLink))
+                   (loadLinks curlLoadOptions baseLink)
 
     db <- open databaseFileName
 
@@ -77,7 +78,7 @@ deadlinkIteration iteration base = do
     -- Update links states. It works 50 links by 50 links to overcome a bug
     -- which appears when too much links must be recorded
     actionPartition 50 uncheckeds $ \list -> do
-        linksToUpdate <- mapM (tick verify) list
+        linksToUpdate <- mapM (tick (verify curlCheckOptions)) list
         startTransaction db
         mapM_ (updateLink db) linksToUpdate
         endTransaction db
