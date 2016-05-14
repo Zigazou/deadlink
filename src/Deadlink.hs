@@ -1,4 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : Deadlink
+Description : DeadLink’s runtime
+Copyright   : (c) Frédéric BISSON, 2016
+License     : GPL-3
+Maintainer  : zigazou@free.fr
+Stability   : experimental
+Portability : POSIX
+
+Main DeadLink’s functions.
+-}
 module Deadlink
 ( deadlinkLoop
 , deadlinkInit
@@ -9,6 +20,7 @@ where
 import Network.URI (nullURI)
 import System.IO (stdout, hFlush)
 
+import Data.Text (Text)
 import Database.SQLite3 (open, close)
 
 import Data.Link (Link, makeLink, pertinent)
@@ -20,22 +32,22 @@ import Database.LinkSQL ( getUncheckedLinks, getUnparsedHTMLLinks, updateLink
 
 import Control.Monad (liftM)
 
-import Settings (databaseFileName, curlCheckOptions, curlLoadOptions)
+import Settings (curlCheckOptions, curlLoadOptions)
 
-getCurrentIteration :: IO Int
-getCurrentIteration = do
-    db <- open databaseFileName
+getCurrentIteration :: Text -> IO Int
+getCurrentIteration dbname = do
+    db <- open dbname
     iteration <- getLastIteration db
     close db
     return iteration
 
-checkPage :: Int -> Link -> IO Link
-checkPage iteration baseLink = do
+checkPage :: Text -> Int -> Link -> IO Link
+checkPage dbname iteration baseLink = do
     -- Load links from web page
     links <- liftM (filter (pertinent baseLink))
                    (loadLinks curlLoadOptions baseLink)
 
-    db <- open databaseFileName
+    db <- open dbname
 
     -- Insert pertinent links in the database
     actionPartition 50 links $ \links' -> do
@@ -51,9 +63,9 @@ checkPage iteration baseLink = do
     return baseLinkUpdated
 
 -- | Initializes the database with the root element
-deadlinkInit :: Link -> IO ()
-deadlinkInit link = do
-    db <- open databaseFileName
+deadlinkInit :: Text -> Link -> IO ()
+deadlinkInit dbname link = do
+    db <- open dbname
     _ <- insertLink db 0 (makeLink nullURI) link
     close db
 
@@ -65,9 +77,9 @@ actionPartition nb list action = do
     actionPartition nb (drop nb list) action
 
 -- | An iteration consists of links checking followed by pages parsing
-deadlinkIteration :: Int -> Link -> IO ()
-deadlinkIteration iteration base = do
-    db <- open databaseFileName
+deadlinkIteration :: Text -> Int -> Link -> IO ()
+deadlinkIteration dbname iteration base = do
+    db <- open dbname
 
     -- Get unchecked links
     uncheckeds <- getUncheckedLinks db
@@ -90,7 +102,7 @@ deadlinkIteration iteration base = do
     -- Update pages states. It works 50 links by 50 links to overcome a bug
     -- which appears when too much pages must be recorded
     actionPartition 50 unparseds $ \list -> do
-        pagesToUpdate <- mapM (tick (checkPage iteration)) list
+        pagesToUpdate <- mapM (tick (checkPage dbname iteration)) list
         startTransaction db
         mapM_ (updateLink db) pagesToUpdate
         endTransaction db
@@ -108,17 +120,17 @@ deadlinkIteration iteration base = do
 -- | Loop again and again till there is no more links to check or page to
 --   parse. It is the responsibility of the caller to call `withCurlDo` before
 --   calling this function.
-deadlinkLoop :: Int -> Link -> IO ()
-deadlinkLoop 15 _ = putStrLn "16 iterations, I stop here!"
-deadlinkLoop iteration baselink = do
+deadlinkLoop :: Text -> Int -> Link -> IO ()
+deadlinkLoop _ 15 _ = putStrLn "16 iterations, I stop here!"
+deadlinkLoop dbname iteration baselink = do
     putStrLn $ "Iteration " ++ show iteration
 
-    db <- open databaseFileName
+    db <- open dbname
     (pageCount, linkCount) <- remainingJob db baselink
     close db
 
     if pageCount == 0 && linkCount == 0
         then putStrLn "Finished!"
         else do
-            deadlinkIteration iteration baselink
-            deadlinkLoop (iteration + 1) baselink
+            deadlinkIteration dbname iteration baselink
+            deadlinkLoop dbname (iteration + 1) baselink
