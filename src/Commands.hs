@@ -10,7 +10,7 @@ Portability : POSIX
 Deadlink’s commands parser
 -}
 module Commands
-( DeadlinkCommand(Create, Crawl, Help)
+( DeadlinkCommand(Create, Crawl, Help, Stat)
 , CommandError(Unknown, ArgNumber, Usage)
 , parseCommand
 )
@@ -20,8 +20,11 @@ import Data.Text (Text, pack)
 import System.FilePath.Posix (isValid)
 import Network.URI (parseURI, URI)
 
+import Statistic (Statistic (Counts))
+
 data DeadlinkCommand = Create Text
                      | Crawl Text URI
+                     | Stat Text Statistic
                      | Help
                      deriving (Eq, Show)
 
@@ -75,6 +78,10 @@ parseCommand ["crawl", dbname, baseURI] = do
 parseCommand ("crawl":_) = Left $ ArgNumber "crawl requires two arguments"
 
 parseCommand [] = Left $ Usage "Usage: deadlink <command> [args]"
+
+parseCommand ["stat", dbname, "counts"] = do
+    dbname' <- validDB dbname
+    return $ Stat dbname' Counts
 
 parseCommand (command:_) = Left $ Unknown (
         "Unknown command: " ++ command

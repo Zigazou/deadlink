@@ -11,9 +11,11 @@ import Data.Text (unpack)
 
 import Data.Link (makeLink)
 import Database.DeadlinkDatabase (createDeadlinkDB)
+import Database.SQLite3 (open, close)
 
 import Deadlink (deadlinkInit, deadlinkLoop, getCurrentIteration)
-import Commands (parseCommand, DeadlinkCommand (Create, Crawl, Help))
+import Commands (parseCommand, DeadlinkCommand (Create, Crawl, Help, Stat))
+import Statistic (Statistic(Counts), getCounts)
 
 {-| Execute a Deadlink command as parsed by the `parseCommand` function -}
 doCommand :: DeadlinkCommand -> IO ()
@@ -33,6 +35,18 @@ doCommand (Crawl dbname baseURI) = do
 
         deadlinkInit dbname baselink
         deadlinkLoop dbname iteration baselink
+
+doCommand (Stat dbname Counts) = do
+    db <- open dbname
+    allCounts <- getCounts db
+    case allCounts of
+         Just [counts, checked, external, htmlpage] -> do
+             print counts
+             print checked
+             print external
+             print htmlpage
+         _ -> hPutStrLn stderr "Unable to get stat" >> exitFailure
+    close db
 
 doCommand Help = do
     hPutStrLn stderr "Deadlink help"
