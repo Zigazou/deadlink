@@ -11,8 +11,11 @@ import Data.Text (unpack)
 
 import Data.Link (makeLink)
 import Database.DeadlinkDatabase (createDeadlinkDB)
-import Database.SQLite3 (open, close)
+import Database.SQLite3 (close)
 
+import Database.MissingSQLite3 ( open_v2, SQLiteFlag(SQLiteOpenReadOnly)
+                               , SQLiteVFS (SQLiteVFSDefault)
+                               )
 import Deadlink (deadlinkInit, deadlinkLoop, getCurrentIteration)
 import Commands (parseCommand, DeadlinkCommand (Create, Crawl, Help, Stat))
 import Statistic (Statistic(Counts), getCounts)
@@ -37,7 +40,7 @@ doCommand (Crawl dbname baseURI) = do
         deadlinkLoop dbname iteration baselink
 
 doCommand (Stat dbname Counts) = do
-    db <- open dbname
+    db <- open_v2 dbname SQLiteOpenReadOnly SQLiteVFSDefault
     allCounts <- getCounts db
     case allCounts of
          Just [counts, checked, external, htmlpage] -> do
