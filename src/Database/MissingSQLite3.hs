@@ -1,27 +1,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : MissingSQLite3
-Description : Defines the open_v2 SQLite3 missing function
+Description : Defines the open2 SQLite3 missing function
 Copyright   : (c) Frédéric BISSON, 2016
 License     : GPL-3
 Maintainer  : zigazou@free.fr
 Stability   : experimental
 Portability : POSIX
 
-The package direct-sqlite3 does not define the open_v2 SQLite3 function. This
+The package direct-sqlite3 does not define the open2 SQLite3 function. This
 function allows, among other things, to set the flags defining how the open
 function must behave. For example, it allows you to open an existing database
 and not creating it if it doesn’t exist as is the case for the open function.
 
-MissingSQLite3 defines the open_v2 SQLite3 function.
+MissingSQLite3 defines the open2 SQLite3 function.
 
 Since it is not part of the original package, some functions were copied from
 direct-sqlite3 into MissingSQLite3 because these functions were not exported.
 -}
 module Database.MissingSQLite3
-( open_v2
-, SQLiteFlag (..)
-, SQLiteVFS (..)
+( open2
+, SQLOpenFlag (..)
+, SQLVFS (..)
 ) where
 
 import Control.Exception (throwIO)
@@ -44,87 +44,43 @@ import Data.Text.Encoding.Error (lenientDecode)
 import Foreign
 import Foreign.C
 
-data SQLiteVFS = SQLiteVFSDefault
-               | SQLiteVFSUnix
-               | SQLiteVFSUnixDotFile
-               | SQLiteVFSUnixExcl
-               | SQLiteVFSUnixNone
-               | SQLiteVFSUnixNamedSem
-               deriving (Eq, Show)
+data SQLVFS = SQLVFSDefault
+            | SQLVFSUnix
+            | SQLVFSUnixDotFile
+            | SQLVFSUnixExcl
+            | SQLVFSUnixNone
+            | SQLVFSUnixNamedSem
+            deriving (Eq, Show)
 
-toMaybeText :: SQLiteVFS -> Maybe Text
-toMaybeText SQLiteVFSDefault = Nothing
-toMaybeText SQLiteVFSUnix = Just "unix"
-toMaybeText SQLiteVFSUnixDotFile = Just "unix-dotfile"
-toMaybeText SQLiteVFSUnixExcl = Just "unix-excl"
-toMaybeText SQLiteVFSUnixNone = Just "unix-none"
-toMaybeText SQLiteVFSUnixNamedSem = Just "unix-namedsem"
+toMaybeText :: SQLVFS -> Maybe Text
+toMaybeText SQLVFSDefault = Nothing
+toMaybeText SQLVFSUnix = Just "unix"
+toMaybeText SQLVFSUnixDotFile = Just "unix-dotfile"
+toMaybeText SQLVFSUnixExcl = Just "unix-excl"
+toMaybeText SQLVFSUnixNone = Just "unix-none"
+toMaybeText SQLVFSUnixNamedSem = Just "unix-namedsem"
 
-data SQLiteFlag = SQLiteOpenReadOnly      -- Ok for sqlite3_open_v2()
-                | SQLiteOpenReadWrite     -- Ok for sqlite3_open_v2()
-                | SQLiteOpenCreate        -- Ok for sqlite3_open_v2()
-                | SQLiteOpenDeleteOnClose -- VFS only
-                | SQLiteOpenExclusive     -- VFS only
-                | SQLiteOpenAutoProxy     -- VFS only
-                | SQLiteOpenURI           -- Ok for sqlite3_open_v2()
-                | SQLiteOpenMemory        -- Ok for sqlite3_open_v2()
-                | SQLiteOpenMainDB        -- VFS only
-                | SQLiteOpenTempDB        -- VFS only
-                | SQLiteOpenTransientDB   -- VFS only
-                | SQLiteOpenMainJournal   -- VFS only
-                | SQLiteOpenTempJournal   -- VFS only
-                | SQLiteOpenSubJournal    -- VFS only
-                | SQLiteOpenMasterJournal -- VFS only
-                | SQLiteOpenNoMutex       -- Ok for sqlite3_open_v2()
-                | SQLiteOpenFullMutex     -- Ok for sqlite3_open_v2()
-                | SQLiteOpenSharedCache   -- Ok for sqlite3_open_v2()
-                | SQLiteOpenPrivateCache  -- Ok for sqlite3_open_v2()
-                | SQLiteOpenWAL           -- VFS only
-                deriving (Eq, Show)
-
-instance Enum SQLiteFlag where
-    fromEnum SQLiteOpenReadOnly      = 0x00000001
-    fromEnum SQLiteOpenReadWrite     = 0x00000002
-    fromEnum SQLiteOpenCreate        = 0x00000004
-    fromEnum SQLiteOpenDeleteOnClose = 0x00000008
-    fromEnum SQLiteOpenExclusive     = 0x00000010
-    fromEnum SQLiteOpenAutoProxy     = 0x00000020
-    fromEnum SQLiteOpenURI           = 0x00000040
-    fromEnum SQLiteOpenMemory        = 0x00000080
-    fromEnum SQLiteOpenMainDB        = 0x00000100
-    fromEnum SQLiteOpenTempDB        = 0x00000200
-    fromEnum SQLiteOpenTransientDB   = 0x00000400
-    fromEnum SQLiteOpenMainJournal   = 0x00000800
-    fromEnum SQLiteOpenTempJournal   = 0x00001000
-    fromEnum SQLiteOpenSubJournal    = 0x00002000
-    fromEnum SQLiteOpenMasterJournal = 0x00004000
-    fromEnum SQLiteOpenNoMutex       = 0x00008000
-    fromEnum SQLiteOpenFullMutex     = 0x00010000
-    fromEnum SQLiteOpenSharedCache   = 0x00020000
-    fromEnum SQLiteOpenPrivateCache  = 0x00040000
-    fromEnum SQLiteOpenWAL           = 0x00080000
-
-    toEnum 0x00000001 = SQLiteOpenReadOnly
-    toEnum 0x00000002 = SQLiteOpenReadWrite
-    toEnum 0x00000004 = SQLiteOpenCreate
-    toEnum 0x00000008 = SQLiteOpenDeleteOnClose
-    toEnum 0x00000010 = SQLiteOpenExclusive
-    toEnum 0x00000020 = SQLiteOpenAutoProxy
-    toEnum 0x00000040 = SQLiteOpenURI
-    toEnum 0x00000080 = SQLiteOpenMemory
-    toEnum 0x00000100 = SQLiteOpenMainDB
-    toEnum 0x00000200 = SQLiteOpenTempDB
-    toEnum 0x00000400 = SQLiteOpenTransientDB
-    toEnum 0x00000800 = SQLiteOpenMainJournal
-    toEnum 0x00001000 = SQLiteOpenTempJournal
-    toEnum 0x00002000 = SQLiteOpenSubJournal
-    toEnum 0x00004000 = SQLiteOpenMasterJournal
-    toEnum 0x00008000 = SQLiteOpenNoMutex
-    toEnum 0x00010000 = SQLiteOpenFullMutex
-    toEnum 0x00020000 = SQLiteOpenSharedCache
-    toEnum 0x00040000 = SQLiteOpenPrivateCache
-    toEnum 0x00080000 = SQLiteOpenWAL
-    toEnum _ = undefined
+data SQLOpenFlag = SQLOpenReadOnly      -- Ok for sqlite3_open2()
+                 | SQLOpenReadWrite     -- Ok for sqlite3_open2()
+                 | SQLOpenCreate        -- Ok for sqlite3_open2()
+                 | SQLOpenDeleteOnClose -- VFS only
+                 | SQLOpenExclusive     -- VFS only
+                 | SQLOpenAutoProxy     -- VFS only
+                 | SQLOpenURI           -- Ok for sqlite3_open2()
+                 | SQLOpenMemory        -- Ok for sqlite3_open2()
+                 | SQLOpenMainDB        -- VFS only
+                 | SQLOpenTempDB        -- VFS only
+                 | SQLOpenTransientDB   -- VFS only
+                 | SQLOpenMainJournal   -- VFS only
+                 | SQLOpenTempJournal   -- VFS only
+                 | SQLOpenSubJournal    -- VFS only
+                 | SQLOpenMasterJournal -- VFS only
+                 | SQLOpenNoMutex       -- Ok for sqlite3_open2()
+                 | SQLOpenFullMutex     -- Ok for sqlite3_open2()
+                 | SQLOpenSharedCache   -- Ok for sqlite3_open2()
+                 | SQLOpenPrivateCache  -- Ok for sqlite3_open2()
+                 | SQLOpenWAL           -- VFS only
+                 deriving (Eq, Show)
 
 foreign import ccall "sqlite3_open_v2"
     c_sqlite3_open_v2 :: CString
@@ -182,14 +138,14 @@ renderDetailSource src = case src of
     DetailMessage msg ->
         return msg
 
-_open_v2 :: Utf8 -> Int -> Maybe Utf8 -> IO (Either (Error, Utf8) Database)
-_open_v2 (Utf8 path) flags mzvfs =
+_open2 :: Utf8 -> Int -> Maybe Utf8 -> IO (Either (Error, Utf8) Database)
+_open2 (Utf8 path) flags mzvfs =
     BS.useAsCString path $ \path' ->
     useAsMaybeCString mzvfs $ \zvfs' ->
     alloca $ \database -> do
         rc <- c_sqlite3_open_v2 path' database (toEnum flags) zvfs'
         db <- Database <$> peek database
-            -- sqlite3_open_v2 returns a sqlite3 even on failure.
+            -- sqlite3_open2 returns a sqlite3 even on failure.
             -- That's where we get a more descriptive error message.
         case toResult () rc of
             Left err -> do
@@ -205,7 +161,30 @@ _open_v2 (Utf8 path) flags mzvfs =
           useAsMaybeCString (Just (Utf8 zvfs)) f = BS.useAsCString zvfs f
           useAsMaybeCString _ f = f nullPtr
 
-open_v2 :: Text -> SQLiteFlag -> SQLiteVFS -> IO Database
-open_v2 path flags zvfs =
-    _open_v2 (toUtf8 path) (fromEnum flags) (toUtf8 <$> toMaybeText zvfs)
+open2 :: Text -> [SQLOpenFlag] -> SQLVFS -> IO Database
+open2 path flags zvfs =
+    _open2 (toUtf8 path) (makeFlag flags) (toUtf8 <$> toMaybeText zvfs)
         >>= checkErrorMsg ("open " `appendShow` path)
+    where
+        makeFlag = foldr (.|.) 0 . fmap toNum
+
+        toNum SQLOpenReadOnly      = 0x00000001
+        toNum SQLOpenReadWrite     = 0x00000002
+        toNum SQLOpenCreate        = 0x00000004
+        toNum SQLOpenDeleteOnClose = 0x00000008
+        toNum SQLOpenExclusive     = 0x00000010
+        toNum SQLOpenAutoProxy     = 0x00000020
+        toNum SQLOpenURI           = 0x00000040
+        toNum SQLOpenMemory        = 0x00000080
+        toNum SQLOpenMainDB        = 0x00000100
+        toNum SQLOpenTempDB        = 0x00000200
+        toNum SQLOpenTransientDB   = 0x00000400
+        toNum SQLOpenMainJournal   = 0x00000800
+        toNum SQLOpenTempJournal   = 0x00001000
+        toNum SQLOpenSubJournal    = 0x00002000
+        toNum SQLOpenMasterJournal = 0x00004000
+        toNum SQLOpenNoMutex       = 0x00008000
+        toNum SQLOpenFullMutex     = 0x00010000
+        toNum SQLOpenSharedCache   = 0x00020000
+        toNum SQLOpenPrivateCache  = 0x00040000
+        toNum SQLOpenWAL           = 0x00080000
