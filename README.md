@@ -20,11 +20,11 @@ The `deadlink` executable will have been created in `./dist/build/deadlink`.
 Usage
 -----
 
-First `deadlink` needs an SQLite3 database named `deadlink.db`.
+First `deadlink` needs an SQLite3 database.
 
-To create `deadlink.db`:
+To create a database named `deadlink.db`:
 
-    db/createdb.bash
+    deadlink create deadlink.db
 
 This script creates an empty SQLite3 database structured for `deadlink`. The
 use of a SQLite3 database has benefits:
@@ -35,16 +35,14 @@ use of a SQLite3 database has benefits:
 
 Once the database has been created, you can run `deadlink`:
 
-    deadlink <base URL>
+    deadlink crawl <dbname> <base URL>
 
 For example:
 
-    deadlink http://www.example.com/
+    deadlink crawl example.com.db http://www.example.com/
 
 Everytime `deadlink` needs to be resumed, it requires the same base URL to
 be specified.
-
-At the moment, `deadlink` needs to be restarted by hand after each iteration.
 
 Querying the database
 ---------------------
@@ -115,7 +113,7 @@ Its output looks like:
 Notes
 -----
 
-To avoid infinite recursion, `deadlink` is limited to 30 iterations.
+To avoid infinite recursion, `deadlink` is limited to 15 iterations.
 
 `deadlink` will take a lot of time for large sites. This is because `deadlink`
 does only one HTTP query at a time in order to be light on web servers.

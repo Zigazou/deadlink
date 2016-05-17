@@ -6,7 +6,7 @@ import Network.Curl (withCurlDo)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.Directory (doesFileExist)
-import System.IO (stderr, hPutStrLn)
+import System.IO (stderr, hPutStrLn, hPrint)
 import Control.Monad (unless)
 import Data.Text (unpack)
 import Data.FileEmbed(embedStringFile)
@@ -82,7 +82,5 @@ main = do
     args <- getArgs
 
     case parseCommand args of
-         Left parseError -> do
-            hPutStrLn stderr (show parseError)
-            exitFailure
+         Left parseError -> hPrint stderr parseError >> exitFailure
          Right command -> doCommand command
