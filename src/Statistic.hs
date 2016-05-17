@@ -11,68 +11,85 @@ Portability : POSIX
 Statistic functions
 -}
 module Statistic
-( Statistic (Counts)
+( Statistic (Counts, HttpCodes, ContentTypes, TopDeadlinks)
 , getCounts
+, getHttpCodes
+, getContentTypes
+, getTopDeadlinks
 )
 where
 
-import Data.Text (Text)
+import Control.Monad (liftM)
+import Data.Text (unpack)
 import Data.FileEmbed(embedStringFile)
 import Database.SQLite3 ( Database, StepResult(Done, Row), prepare, finalize
-                        , step, SQLData (SQLInteger), column
-                        , ColumnIndex(ColumnIndex), SQLData
+                        , step, SQLData (SQLInteger, SQLText), column
+                        , ColumnIndex(ColumnIndex), SQLData, Statement
                         )
 
-data Statistic = Counts deriving (Eq, Show)
+data Statistic = Counts
+               | HttpCodes
+               | ContentTypes
+               | TopDeadlinks
+               deriving (Eq, Show)
 
-getValue :: Database -> Text -> IO (Maybe SQLData)
-getValue db req = do
-    req' <- prepare db req
-
-    result <- step req'
-    value <- case result of
+getValue :: (SQLData -> Maybe a) -> Statement -> IO (Maybe a)
+getValue convert statement = do
+    result <- step statement
+    valueM <- case result of
         Done -> return Nothing
-        Row -> column req' (ColumnIndex 0) >>= return . Just
+        Row -> liftM convert (column statement (ColumnIndex 0))
+    finalize statement
+    return valueM
 
-    finalize req'
-
-    return value
+getValues :: (Statement -> IO a) -> Statement -> IO [a]
+getValues doOneValue statement = do
+    result <- step statement
+    case result of
+        Done -> finalize statement >> return []
+        Row -> do
+            value <- doOneValue statement
+            nextValues <- getValues doOneValue statement
+            return (value:nextValues)
 
 getCounts :: Database -> IO (Maybe [Int])
-getCounts db = do
-    results <- sequence (getValue db <$> reqs)
-    return $ sequence (sqlInt <$> results)
-    where reqs =
+getCounts db = liftM sequence (mapM doOneReq reqs)
+    where
+        reqs =
             [ $(embedStringFile "src/Database/Stat/counts.sql")
             , $(embedStringFile "src/Database/Stat/checkedlinks.sql")
             , $(embedStringFile "src/Database/Stat/externallinks.sql")
             , $(embedStringFile "src/Database/Stat/htmlpages.sql")
             ]
 
-          sqlInt (Just (SQLInteger i)) = Just (fromEnum i)
-          sqlInt _ = Nothing
+        sqlInt (SQLInteger i) = Just (fromEnum i)
+        sqlInt _ = Nothing
 
-{-
-httpcode=$(execdb "
-    SELECT   '  - '
-          || code.httpcode
-          || ' '
-          || code.description
-          || ': '
-          || COUNT(*)
-    FROM     link, code
-    WHERE    code.httpcode = link.httpcode
-    GROUP BY link.httpcode
-    ORDER BY link.httpcode ASC;
-")
+        doOneReq = (>>= getValue sqlInt) . prepare db
 
-linktype=$(execdb "
-    SELECT   '  - '
-          || CASE WHEN contenttype = '' THEN '[unknown]' ELSE contenttype END
-          || ': '
-          || COUNT(*)
-    FROM     link
-    GROUP BY contenttype;
-")
+getHttpCodes :: Database -> IO [(Int, Int, String)]
+getHttpCodes db = do
+    let req = $(embedStringFile "src/Database/Stat/httpcodes.sql")
+    prepare db req >>= getValues doOneValue
+    where doOneValue r = do
+            (SQLInteger httpcode)  <- column r (ColumnIndex 0)
+            (SQLText description)  <- column r (ColumnIndex 1)
+            (SQLInteger codeCount) <- column r (ColumnIndex 2)
+            return (fromEnum httpcode, fromEnum codeCount, unpack description)
 
--}
+getContentTypes :: Database -> IO [(String, Int)]
+getContentTypes db = do
+    let req = $(embedStringFile "src/Database/Stat/contenttypes.sql")
+    prepare db req >>= getValues doOneValue
+    where doOneValue r = do
+            (SQLText mimetype)     <- column r (ColumnIndex 0)
+            (SQLInteger typeCount) <- column r (ColumnIndex 1)
+            return (unpack mimetype, fromEnum typeCount)
+
+getTopDeadlinks :: Database -> IO [String]
+getTopDeadlinks db = do
+    let req = $(embedStringFile "src/Database/Stat/topdeadlinks.sql")
+    prepare db req >>= getValues doOneValue
+    where doOneValue r = do
+            (SQLText deadlink) <- column r (ColumnIndex 0)
+            return $ unpack deadlink

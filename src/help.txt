@@ -1,0 +1,12 @@
+Deadlink help
+Usage: deadlink <command> [args]
+Commands:
+- create <dbname> -> create the database structure
+- crawl <dbname> <baseuri> -> crawl a website
+- stat <dbname> <stattype> -> website stat
+    where stattype is one of:
+    - counts: counts of links
+    - httpcodes: list of encountered HTTP codes and their count
+    - contenttypes: list of encountered content types and their count
+    - topdeadlinks: top 10 of the most found dead links
+- help -> show this help

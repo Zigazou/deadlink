@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Main where
 
 import Network.Curl (withCurlDo)
@@ -8,6 +9,7 @@ import System.Directory (doesFileExist)
 import System.IO (stderr, hPutStrLn)
 import Control.Monad (unless)
 import Data.Text (unpack)
+import Data.FileEmbed(embedStringFile)
 
 import Data.Link (makeLink)
 import Database.DeadlinkDatabase (createDeadlinkDB)
@@ -18,7 +20,9 @@ import Database.MissingSQLite3 ( open2, SQLOpenFlag(SQLOpenReadOnly)
                                )
 import Deadlink (deadlinkInit, deadlinkLoop, getCurrentIteration)
 import Commands (parseCommand, DeadlinkCommand (Create, Crawl, Help, Stat))
-import Statistic (Statistic(Counts), getCounts)
+import Statistic ( Statistic(Counts, HttpCodes, ContentTypes, TopDeadlinks)
+                 , getCounts, getHttpCodes, getContentTypes, getTopDeadlinks
+                 )
 
 {-| Execute a Deadlink command as parsed by the `parseCommand` function -}
 doCommand :: DeadlinkCommand -> IO ()
@@ -44,20 +48,34 @@ doCommand (Stat dbname Counts) = do
     allCounts <- getCounts db
     case allCounts of
          Just [counts, checked, external, htmlpage] -> do
-             print counts
-             print checked
-             print external
-             print htmlpage
+             putStrLn $ "Total links: "    ++ show counts
+             putStrLn $ "Checked links: "  ++ show checked
+             putStrLn $ "External links: " ++ show external
+             putStrLn $ "HTML pages: "     ++ show htmlpage
          _ -> hPutStrLn stderr "Unable to get stat" >> exitFailure
     close db
 
-doCommand Help = do
-    hPutStrLn stderr "Deadlink help"
-    hPutStrLn stderr "Usage: deadlink <command> [args]"
-    hPutStrLn stderr "Commands:"
-    hPutStrLn stderr "- create <dbname> -> create the database structure"
-    hPutStrLn stderr "- crawl <dbname> <baseuri> -> crawl a website"
-    hPutStrLn stderr "- help -> show this help"
+doCommand (Stat dbname HttpCodes) = do
+    db <- open2 dbname [SQLOpenReadOnly] SQLVFSDefault
+    getHttpCodes db >>= mapM_ (putStrLn . showCount)
+    close db
+
+    where showCount (code, codeCount, description) =
+            show code ++ " - " ++ description ++ ": " ++ show codeCount
+
+doCommand (Stat dbname TopDeadlinks) = do
+    db <- open2 dbname [SQLOpenReadOnly] SQLVFSDefault
+    getTopDeadlinks db >>= mapM_ putStrLn
+    close db
+
+doCommand (Stat dbname ContentTypes) = do
+    db <- open2 dbname [SQLOpenReadOnly] SQLVFSDefault
+    getContentTypes db >>= mapM_ (putStrLn . showTypes)
+    close db
+
+    where showTypes (mimetype, typeCount) = mimetype ++ ": " ++ show typeCount
+
+doCommand Help = hPutStrLn stderr $(embedStringFile "src/help.txt")
 
 main :: IO ()
 main = do

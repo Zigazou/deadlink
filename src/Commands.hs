@@ -16,11 +16,12 @@ module Commands
 )
 where
 
+import Control.Monad (liftM, liftM2)
 import Data.Text (Text, pack)
 import System.FilePath.Posix (isValid)
 import Network.URI (parseURI, URI)
 
-import Statistic (Statistic (Counts))
+import Statistic (Statistic (Counts, HttpCodes, ContentTypes, TopDeadlinks))
 
 data DeadlinkCommand = Create Text
                      | Crawl Text URI
@@ -49,6 +50,13 @@ validDB dbname
     | isValid dbname = Right (pack dbname)
     | otherwise = Left $ InvalidArg "Invalid database file name"
 
+validStatType :: String -> Either CommandError Statistic
+validStatType "counts" = Right Counts
+validStatType "httpcodes" = Right HttpCodes
+validStatType "contenttypes" = Right ContentTypes
+validStatType "topdeadlinks" = Right TopDeadlinks
+validStatType _ = Left $ InvalidArg "Invalid statistic type"
+
 {-| Verify a URI is valid -}
 validURI :: String -> Either CommandError URI
 validURI path = maybeToEither (parseURI path) (InvalidArg "Invalid URI")
@@ -63,27 +71,13 @@ existence in the file system.
 -}
 parseCommand :: [String] -> Either CommandError DeadlinkCommand
 parseCommand ["help"] = Right Help
-
-parseCommand ["create", dbname] = do
-    dbname' <- validDB dbname
-    return $ Create dbname'
-
+parseCommand ["create", dbname] = liftM Create (validDB dbname)
 parseCommand ("create":_) = Left $ ArgNumber "create requires one argument"
-
-parseCommand ["crawl", dbname, baseURI] = do
-    dbname' <- validDB dbname
-    baseURI' <- validURI baseURI
-    return $ Crawl dbname' baseURI'
-
+parseCommand ["crawl", d, b] = liftM2 Crawl (validDB d) (validURI b)
 parseCommand ("crawl":_) = Left $ ArgNumber "crawl requires two arguments"
-
 parseCommand [] = Left $ Usage "Usage: deadlink <command> [args]"
-
-parseCommand ["stat", dbname, "counts"] = do
-    dbname' <- validDB dbname
-    return $ Stat dbname' Counts
-
+parseCommand ["stat", d, s] = liftM2 Stat (validDB d) (validStatType s)
 parseCommand (command:_) = Left $ Unknown (
         "Unknown command: " ++ command
-        ++ "\nValid commands are: help, create, crawl"
+        ++ "\nValid commands are: help, create, crawl, stat"
     )
