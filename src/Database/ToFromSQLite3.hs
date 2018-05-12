@@ -23,7 +23,7 @@ import Data.Time ( UTCTime, formatTime, defaultTimeLocale, iso8601DateFormat
                  , parseTimeM
                  )
 import Data.Text (pack, unpack)
-import Network.URI (URI, parseURI, uriToString)
+import Network.URI.Text (URI, parseURI, uriToString)
 
 import Data.Link (Link (UncheckedLink, ParsedLink, CheckedLink))
 
@@ -46,7 +46,7 @@ instance ToFromSQLite3Simple Int where
 instance ToFromSQLite3Simple URI where
     toSQLite3S uri = SQLText . pack $ uriToString id uri ""
 
-    fromSQLite3S (SQLText t) = parseURI (unpack t)
+    fromSQLite3S (SQLText t) = parseURI t
     fromSQLite3S _ = Nothing
 
 instance ToFromSQLite3Simple UTCTime where

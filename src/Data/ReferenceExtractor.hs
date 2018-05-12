@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : ReferenceExtractor
 Description : Extract links from a, link etc. tag from HTML
@@ -11,24 +12,27 @@ A link extractor
 -}
 module Data.ReferenceExtractor (findReferences) where
 
+import qualified Data.Text as T
 import Text.HTML.TagSoup (Tag(TagOpen), parseTags)
 import Data.Maybe (catMaybes, fromMaybe)
 
-tagToReference :: Tag String -> Maybe String
-tagToReference (TagOpen "a" attrs)      = lookup "href" attrs
-tagToReference (TagOpen "link" attrs)   = lookup "href" attrs
-tagToReference (TagOpen "script" attrs) = lookup "src" attrs
-tagToReference _                        = Nothing
+tagToReference :: Tag T.Text -> Maybe T.Text
+tagToReference (TagOpen tagName attrs)
+    | tagName == "a" = lookup "href" attrs
+    | tagName == "link" = lookup "href" attrs
+    | tagName == "script" = lookup "src" attrs
+    | otherwise = Nothing
+tagToReference _ = Nothing
 
 -- | Find base tag if it exists
-findBase :: [Tag String] -> String
+findBase :: [Tag T.Text] -> T.Text
 findBase (TagOpen "base" attrs:_) = fromMaybe "" (lookup "href" attrs)
 findBase (_:tags)                 = findBase tags
 findBase []                       = ""
 
 -- | Given an HTML string, find all references to resources (links, scripts,
 --   etc.)
-findReferences :: String -> (String, [String])
+findReferences :: T.Text -> (T.Text, [T.Text])
 findReferences document =
     ( findBase tags
     , catMaybes (tagToReference <$> tags)

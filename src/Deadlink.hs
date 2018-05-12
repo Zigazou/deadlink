@@ -17,7 +17,7 @@ module Deadlink
 )
 where
 
-import Network.URI (nullURI)
+import Network.URI.Text (nullURI)
 import System.IO (stdout, hFlush)
 
 import Data.Text (Text)

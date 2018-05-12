@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : LinkChecker
 Description : A link checker
@@ -16,8 +17,10 @@ module Network.LinkChecker
 )
 where
 
-import Network.Curl ( CurlResponse, CurlOption, curlGetResponse_
-                    , respHeaders, respStatus, respBody
+import qualified Data.Text as T
+
+import Network.Curl ( CurlResponse, CurlOption
+                    , curlGetResponse_, respHeaders, respStatus, respBody
                     )
 
 import Data.Maybe (catMaybes, fromMaybe)
@@ -36,16 +39,17 @@ import Data.Link
 loadLinks :: [CurlOption] -> Link -> IO [Link]
 loadLinks options baseLink = do
     resp <- curlGetResponse_ (url baseLink) options
-    let locationM = case lookup "Location" (respHeaders resp) of
-                        Nothing        -> Nothing
-                        Just (' ':adr) -> absolute baseLink adr
-                        Just adr       -> absolute baseLink adr
-        (newBase, references) = findReferences (respBody resp)
+    let locationM = case lookup ("Location" :: String) (respHeaders resp) of
+                        Nothing -> Nothing
+                        Just lTag -> absolute baseLink . T.strip . T.pack $ lTag
+
+        (newBase, references) = findReferences (T.pack $ respBody resp)
         baseLink' = fromMaybe baseLink (absolute baseLink newBase)
 
-    return $ catMaybes ( locationM
-                       : (absolute baseLink' <$> references)
-                       )
+    return $ catMaybes
+        ( locationM
+        : (absolute baseLink' <$> references)
+        )
 
 -- | Checks for a Link viability
 verify :: [CurlOption] -> Link -> IO Link

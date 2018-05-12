@@ -23,7 +23,6 @@ executable deadlink
   build-depends:       base >=4.8 && <4.9,
                        tagsoup,
                        curl,
-                       network-uri,
                        MissingH,
                        text,
                        bytestring,
@@ -32,6 +31,7 @@ executable deadlink
                        directory,
                        hashable,
                        filepath,
-                       file-embed
+                       file-embed,
+                       parsec
   hs-source-dirs:      src
   default-language:    Haskell2010

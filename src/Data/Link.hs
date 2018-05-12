@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Link
 Description : A link!
@@ -23,12 +24,12 @@ module Data.Link
 )
 where
 
-import Network.URI ( URI(URI, uriScheme, uriAuthority, uriPath, uriFragment)
-                   , URIAuth(URIAuth)
-                   , parseURIReference, relativeTo, uriToString
-                   )
-import Data.List.Utils (startswith, endswith)
-import Data.Char (toLower)
+import qualified Data.Text as T
+import Network.URI.Text
+    ( URI(URI, uriScheme, uriAuthority, uriPath, uriFragment)
+    , URIAuth(URIAuth)
+    , parseURIReference, relativeTo, uriToString
+    )
 import Data.Time (UTCTime)
 
 -- | A link
@@ -50,16 +51,31 @@ linkURI (UncheckedLink uri)     = uri
 linkURI (CheckedLink uri _ _ _) = uri
 linkURI (ParsedLink uri _ _ _)  = uri
 
+startswith :: T.Text -> T.Text -> Bool
+startswith needle haystack
+    | T.null needle = False
+    | T.null haystack = False
+    | T.length needle > T.length haystack = False
+    | otherwise = needle == T.take (T.length needle) haystack
+
+endswith :: T.Text -> T.Text -> Bool
+endswith needle haystack
+    | T.null needle = False
+    | T.null haystack = False
+    | T.length needle > T.length haystack = False
+    | otherwise = needle == T.takeEnd (T.length needle) haystack
+
 -- | Create a Link based on a URI. Discard URI fragment as it is not relevant
 --   and will avoid unnecessary checks.
 makeLink :: URI -> Link
 makeLink uri = UncheckedLink uri { uriFragment = "" }
 
 -- | Given a base URI, get an absolute URI from a String
-absolute :: Link -> String -> Maybe Link
+absolute :: Link -> T.Text -> Maybe Link
 absolute baseLink path = do
     pathURI <- parseURIReference path
-    return $ makeLink (relativeTo pathURI $ linkURI baseLink)
+    relURI <- relativeTo pathURI $ linkURI baseLink
+    return $ makeLink relURI
 
 -- | Given a base Link and a Link, tells if the URI is pertinent or should be
 --   ignored.
@@ -97,5 +113,5 @@ isReserved_ (URIAuth _ regName _)
     | domain rn "example.net" = True
     | domain rn "example.org" = True
     | otherwise               = False
-    where domain str tl = str == tl || endswith tl ('.':str)
-          rn = toLower <$> regName
+    where domain str tl = str == tl || endswith tl (T.cons '.' str)
+          rn = T.toLower regName
