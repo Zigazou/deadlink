@@ -1,7 +1,7 @@
 -- Database creation script for Deadlink
 --
 -- This file is included into the deadlink executable when the Deadlink
--- project is being builded. It allows the deadlink executable to create
+-- project is being built. It allows the deadlink executable to create
 -- databases without requiring an external script.
 --
 -- This script is meant to create an SQLite3 database.

@@ -84,7 +84,8 @@ deadlinkIteration dbname iteration base = do
     -- Get unchecked links
     uncheckeds <- getUncheckedLinks db
 
-    putStr $ "Checking " ++ show (length uncheckeds) ++ " links"
+    --putStr $ "Checking " ++ show (length uncheckeds) ++ " links"
+    putStr $ "Checking many links"
 
     -- Update links states. It works 50 links by 50 links to overcome a bug
     -- which appears when too much links must be recorded
@@ -97,7 +98,8 @@ deadlinkIteration dbname iteration base = do
     -- Check every unparsed HTML page
     unparseds <- getUnparsedHTMLLinks db base
 
-    putStr $ "\nParsing " ++ show (length unparseds) ++ " pages"
+    --putStr $ "\nParsing " ++ show (length unparseds) ++ " pages"
+    putStr $ "\nParsing many pages"
 
     -- Update pages states. It works 50 links by 50 links to overcome a bug
     -- which appears when too much pages must be recorded

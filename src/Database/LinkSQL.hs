@@ -22,6 +22,7 @@ module Database.LinkSQL
 )
 where
 
+import System.IO.Unsafe (unsafeInterleaveIO)
 import Data.Text (Text)
 import Database.SQLite3 ( Database, StepResult(Done, Row), Statement
                         , prepare, finalize, step, SQLData, bindNamed
@@ -73,19 +74,20 @@ updateLink db link = do
     finalize req
     return result
 
-populate :: [Link] -> Statement -> IO [Link]
-populate links req = do
+populate :: Statement -> IO [Link]
+populate req = do
     result <- step req
     case result of
-        Done -> do
-            finalize req
-            return []
+        Done -> finalize req >> return []
         Row -> do
             cols <- mapM (column req . ColumnIndex) [0 .. 4]
             let linkM = fromSQLite3C cols :: Maybe Link
-            case linkM of
-                Nothing -> populate links req
-                Just link -> (link :) <$> populate links req
+
+            remainingLinks <- unsafeInterleaveIO (populate req)
+
+            return $ case linkM of
+                Nothing -> remainingLinks
+                Just link -> link:remainingLinks
 
 getUncheckedLinks :: Database -> IO [Link]
 getUncheckedLinks db = do
@@ -94,7 +96,7 @@ getUncheckedLinks db = do
                       \WHERE checkdate IS NULL \
                       \AND   parsedate IS NULL;"
 
-    populate [] req
+    populate req
 
 getUnparsedHTMLLinks :: Database -> Link -> IO [Link]
 getUnparsedHTMLLinks db base = do
@@ -106,7 +108,7 @@ getUnparsedHTMLLinks db base = do
 
     bindNamed req [ (":base", toSQLite3S $ url base ++ "%") ]
 
-    populate [] req
+    populate req
 
 remainingJob :: Database -> Link -> IO (Int, Int)
 remainingJob db base = do
