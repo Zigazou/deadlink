@@ -90,10 +90,11 @@ deadlinkIteration dbname iteration base = do
     -- Update links states. It works 50 links by 50 links to overcome a bug
     -- which appears when too much links must be recorded
     actionPartition 50 uncheckeds $ \list -> do
-        linksToUpdate <- mapM (tick (verify curlCheckOptions)) list
+        linksToUpdate <- mapM ((tick '.' >>) . verify curlCheckOptions) list
         startTransaction db
         mapM_ (updateLink db) linksToUpdate
         endTransaction db
+        tick '*'
 
     -- Check every unparsed HTML page
     unparseds <- getUnparsedHTMLLinks db base
@@ -104,20 +105,17 @@ deadlinkIteration dbname iteration base = do
     -- Update pages states. It works 50 links by 50 links to overcome a bug
     -- which appears when too much pages must be recorded
     actionPartition 50 unparseds $ \list -> do
-        pagesToUpdate <- mapM (tick (checkPage dbname iteration)) list
+        pagesToUpdate <- mapM ((tick '.' >>) . checkPage dbname iteration) list
         startTransaction db
         mapM_ (updateLink db) pagesToUpdate
         endTransaction db
+        tick '*'
 
     close db
 
     putStr "\n"
 
-    where tick action l = do
-            putChar '.'
-            --putStrLn (url l)
-            hFlush stdout
-            action l
+    where tick c = putChar c >> hFlush stdout
 
 -- | Loop again and again till there is no more links to check or page to
 --   parse. It is the responsibility of the caller to call `withCurlDo` before
