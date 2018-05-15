@@ -21,13 +21,12 @@ import Network.URI.Text (nullURI)
 import System.IO (stdout, hFlush)
 
 import Data.Text (Text)
-import Database.SQLite3 (open, close)
+import Database.SQLite3 (Database, open, close)
 
 import Data.Link (Link, makeLink, pertinent)
 import Network.LinkChecker (verify, parse, loadLinks)
 import Database.LinkSQL ( getUncheckedLinks, getUnparsedHTMLLinks, updateLink
-                        , insertLink, remainingJob, startTransaction
-                        , endTransaction, getLastIteration
+                        , insertLink, remainingJob, getLastIteration
                         )
 
 import Control.Monad (liftM)
@@ -41,26 +40,17 @@ getCurrentIteration dbname = do
     close db
     return iteration
 
-checkPage :: Text -> Int -> Link -> IO Link
-checkPage dbname iteration baseLink = do
+checkPage :: Database -> Int -> Link -> IO Link
+checkPage db iteration baseLink = do
     -- Load links from web page
     links <- liftM (filter (pertinent baseLink))
                    (loadLinks curlLoadOptions baseLink)
 
-    db <- open dbname
-
     -- Insert pertinent links in the database
-    actionPartition 50 links $ \links' -> do
-        startTransaction db
-        mapM_ (insertLink db iteration baseLink) links'
-        endTransaction db
+    actionPartition 50 links (mapM_ (insertLink db iteration baseLink))
 
     -- Update current link
-    baseLinkUpdated <- parse baseLink
-
-    close db
-
-    return baseLinkUpdated
+    parse baseLink
 
 -- | Initializes the database with the root element
 deadlinkInit :: Text -> Link -> IO ()
@@ -82,33 +72,23 @@ deadlinkIteration dbname iteration base = do
     db <- open dbname
 
     -- Get unchecked links
-    uncheckeds <- getUncheckedLinks db
+    (uncheckedCount, uncheckeds) <- getUncheckedLinks db
 
-    --putStr $ "Checking " ++ show (length uncheckeds) ++ " links"
-    putStr $ "Checking many links"
+    putStr $ "Checking " ++ show uncheckedCount ++ " links"
 
-    -- Update links states. It works 50 links by 50 links to overcome a bug
-    -- which appears when too much links must be recorded
+    -- Update links states. Operates 50 links by 50 links to save memory.
     actionPartition 50 uncheckeds $ \list -> do
-        linksToUpdate <- mapM ((tick '.' >>) . verify curlCheckOptions) list
-        startTransaction db
-        mapM_ (updateLink db) linksToUpdate
-        endTransaction db
+        mapM (verify curlCheckOptions) list >>= mapM_ (updateLink db)
         tick '*'
 
     -- Check every unparsed HTML page
-    unparseds <- getUnparsedHTMLLinks db base
+    (unparsedCount, unparseds) <- getUnparsedHTMLLinks db base
 
-    --putStr $ "\nParsing " ++ show (length unparseds) ++ " pages"
-    putStr $ "\nParsing many pages"
+    putStr $ "\nParsing " ++ show unparsedCount ++ " pages"
 
-    -- Update pages states. It works 50 links by 50 links to overcome a bug
-    -- which appears when too much pages must be recorded
+    -- Update pages states. Operates 50 links by 50 links to save memory.
     actionPartition 50 unparseds $ \list -> do
-        pagesToUpdate <- mapM ((tick '.' >>) . checkPage dbname iteration) list
-        startTransaction db
-        mapM_ (updateLink db) pagesToUpdate
-        endTransaction db
+        mapM (checkPage db iteration) list >>= mapM_ (updateLink db)
         tick '*'
 
     close db

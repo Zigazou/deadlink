@@ -78,7 +78,7 @@ populate :: Statement -> IO [Link]
 populate req = do
     result <- step req
     case result of
-        Done -> finalize req >> return []
+        Done -> unsafeInterleaveIO (finalize req >> return [])
         Row -> do
             cols <- mapM (column req . ColumnIndex) [0 .. 4]
             let linkM = fromSQLite3C cols :: Maybe Link
@@ -89,26 +89,80 @@ populate req = do
                 Nothing -> remainingLinks
                 Just link -> link:remainingLinks
 
-getUncheckedLinks :: Database -> IO [Link]
+getUncheckedLinks :: Database -> IO (Int, [Link])
 getUncheckedLinks db = do
-    req <- prepare db "SELECT url, httpcode, contenttype, checkdate \
-                      \FROM link \
-                      \WHERE checkdate IS NULL \
-                      \AND   parsedate IS NULL;"
+    -- Create a temporary table to store the list of unchecked links allowing
+    -- the origin table to be modified while read the temporary table.
+    exec db "DROP TABLE IF EXISTS unchecked;"
 
-    populate req
+    exec db "CREATE TEMPORARY TABLE unchecked AS \
+            \SELECT url, httpcode, contenttype, checkdate \
+            \FROM link \
+            \WHERE checkdate IS NULL \
+            \AND   parsedate IS NULL;"
 
-getUnparsedHTMLLinks :: Database -> Link -> IO [Link]
+    -- Calculate number of unparsed links
+    reqCount <- prepare db "SELECT COUNT(*) FROM unchecked;"
+    resCount <- step reqCount
+
+    rowCount <- case resCount of
+                    Done -> return 0
+                    Row -> do
+                        (SQLInteger count) <- column reqCount (ColumnIndex 0)
+                        return $ fromEnum count
+
+    finalize reqCount
+
+    -- Return the result
+    if rowCount == 0
+        then return (0, [])
+        else do
+            req <- prepare db "SELECT url, httpcode, contenttype, checkdate \
+                              \FROM unchecked;"
+
+            list <- populate req
+            return (rowCount, list)
+
+getUnparsedHTMLLinks :: Database -> Link -> IO (Int, [Link])
 getUnparsedHTMLLinks db base = do
-    req <- prepare db "SELECT url, httpcode, contenttype, checkdate \
+    -- Create a temporary table to store the list of unparsed links allowing
+    -- the origin table to be modified while read the temporary table.
+    exec db "DROP TABLE IF EXISTS unparsed;"
+    
+    cre <- prepare db "CREATE TEMPORARY TABLE unparsed AS \
+                      \SELECT url, httpcode, contenttype, checkdate \
                       \FROM link \
                       \WHERE contenttype LIKE 'text/html%' \
                       \AND   url LIKE :base \
                       \AND   parsedate IS NULL;"
 
-    bindNamed req [ (":base", toSQLite3S $ url base ++ "%") ]
+    bindNamed cre [ (":base", toSQLite3S $ url base ++ "%") ]
 
-    populate req
+    _ <- step cre
+    
+    finalize cre
+
+    -- Calculate number of unparsed links
+    reqCount <- prepare db "SELECT COUNT(*) FROM unparsed;"
+    resCount <- step reqCount
+
+    rowCount <- case resCount of
+                    Done -> return 0
+                    Row -> do
+                        (SQLInteger count) <- column reqCount (ColumnIndex 0)
+                        return $ fromEnum count
+
+    finalize reqCount
+
+    -- Return the result
+    if rowCount == 0
+        then return (0, [])
+        else do
+            req <- prepare db "SELECT url, httpcode, contenttype, checkdate \
+                              \FROM unparsed;"
+
+            list <- populate req
+            return (rowCount, list)
 
 remainingJob :: Database -> Link -> IO (Int, Int)
 remainingJob db base = do

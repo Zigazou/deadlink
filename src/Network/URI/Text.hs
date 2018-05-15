@@ -112,26 +112,18 @@ import Data.Text ( Text )
 import qualified Data.Text as T
 
 import Text.Parsec
-    ( ParseError(..)
+    ( ParseError
     , parse, (<|>), (<?>), try
-    , option, many, many1, count, notFollowedBy, lookAhead
-    , char, satisfy, oneOf, string, letter, digit, hexDigit, eof
+    , option, many, many1, count, notFollowedBy
+    , char, satisfy, oneOf, string, eof
     , unexpected
     )
 
-import Text.Parsec.Prim ( Parsec (..) )
+import Text.Parsec.Text ( GenParser )
 
-import Text.Parsec.Text ( GenParser(..) )
-
-import Data.Char( ord, chr, isHexDigit, isSpace, toLower, toUpper, digitToInt )
-
-import Debug.Trace( trace )
+import Data.Char( ord, chr, isHexDigit, toLower, toUpper, digitToInt )
 
 import Numeric( showIntAtBase )
-
-import Data.Maybe( isJust )
-
-import Control.Monad( MonadPlus(..) )
 
 import Data.Typeable  ( Typeable )
 import Data.Data      ( Data )
@@ -185,7 +177,7 @@ nullURI = URI
 --  data exposed by show.]]]
 --
 instance Show URI where
-    showsPrec _ uri = uriToString defaultUserInfoMap uri
+    showsPrec _ aUri = uriToString defaultUserInfoMap aUri
 
 defaultUserInfoMap :: Text -> Text
 defaultUserInfoMap uinf = T.append user newpass
@@ -194,17 +186,6 @@ defaultUserInfoMap uinf = T.append user newpass
         newpass      = if T.null pass || (pass == "@") || (pass == ":@")
                        then pass
                        else ":...@"
-
-testDefaultUserInfoMap =
-     [ defaultUserInfoMap ""                == ""
-     , defaultUserInfoMap "@"               == "@"
-     , defaultUserInfoMap "user@"           == "user@"
-     , defaultUserInfoMap "user:@"          == "user:@"
-     , defaultUserInfoMap "user:anonymous@" == "user:...@"
-     , defaultUserInfoMap "user:pass@"      == "user:...@"
-     , defaultUserInfoMap "user:pass"       == "user:...@"
-     , defaultUserInfoMap "user:anonymous"  == "user:...@"
-     ]
 
 ------------------------------------------------------------
 --  Parse a URI
@@ -276,11 +257,6 @@ isIPv6address = isValidParse ipv6address
 isIPv4address :: Text -> Bool
 isIPv4address = isValidParse ipv4address
 
--- |Test function: parse and reconstruct a URI reference
---
-testURIReference :: Text -> Text
-testURIReference = T.pack . show  . parseAll uriReference ""
-
 --  Helper function for turning a string into a URI
 --
 parseURIAny :: URIParser URI -> Text -> Maybe URI
@@ -293,7 +269,7 @@ parseURIAny parser uristr = case parseAll parser "" uristr of
 isValidParse :: URIParser a -> Text -> Bool
 isValidParse parser uristr = case parseAll parser "" uristr of
         Left  _ -> False
-        Right u -> True
+        Right _ -> True
 
 parseAll :: URIParser a -> String -> Text -> Either ParseError a
 parseAll parser filename uristr = parse newparser filename uristr
@@ -316,7 +292,7 @@ type URIParser a = GenParser () a
 --
 escaped :: URIParser Text
 escaped = do
-    char '%'
+    _ <- char '%'
     h1 <- hexDigitChar
     h2 <- hexDigitChar
     return $ T.cons '%' (T.append h1 h2)
@@ -335,9 +311,6 @@ isGenDelims c = c `telem` ":/?#[]@"
 
 isSubDelims :: Char -> Bool
 isSubDelims c = c `telem` "!$&'()*+,;="
-
-genDelims :: URIParser Text
-genDelims = T.singleton <$> satisfy isGenDelims
 
 subDelims :: URIParser Text
 subDelims = T.singleton <$> satisfy isSubDelims
@@ -370,8 +343,6 @@ unreservedChar = T.singleton <$> satisfy isUnreserved
 uri :: URIParser URI
 uri = do
     us <- try uscheme
-    -- ua <- option Nothing ( do { try (string "//") ; uauthority } )
-    -- up <- upath
     (ua,up) <- hierPart
     uq <- option "" ( char '?' >> uquery    )
     uf <- option "" ( char '#' >> ufragment )
@@ -387,7 +358,7 @@ hierPart :: URIParser ((Maybe URIAuth), Text)
 hierPart = withAuthority <|> absoluteWOAuth <|> rootLessWOAuth <|> nothingAtAll
     where
         withAuthority = do
-            try (string "//")
+            _ <- try (string "//")
             ua <- uauthority
             up <- pathAbEmpty
             return (ua, up)
@@ -403,7 +374,7 @@ hierPart = withAuthority <|> absoluteWOAuth <|> rootLessWOAuth <|> nothingAtAll
 uscheme :: URIParser Text
 uscheme = do
     s <- oneThenMany alphaChar schemeChar
-    char ':'
+    _ <- char ':'
     return $ T.snoc s ':'
 
 --  RFC3986, section 3.2
@@ -424,7 +395,7 @@ uauthority = do
 userinfo :: URIParser Text
 userinfo = do
     uu <- many (uchar ";:&=+$,")
-    char '@'
+    _ <- char '@'
     return (T.snoc (T.concat uu) '@')
 
 --  RFC3986, section 3.2.2
@@ -435,19 +406,20 @@ host = ipLiteral <|> try ipv4address <|> regName
 ipLiteral :: URIParser Text
 ipLiteral = parseIpLiteral <?> "IP address literal"
     where parseIpLiteral = do
-            char '['
+            _ <- char '['
             ua <- ( ipv6address <|> ipvFuture )
-            char ']'
+            _ <- char ']'
             return $ T.concat [ "[", ua, "]" ]
 
 ipvFuture :: URIParser Text
 ipvFuture = do
-    char 'v'
+    _ <- char 'v'
     h <- hexDigitChar
-    char '.'
+    _ <- char '.'
     a <- many1 (satisfy isIpvFutureChar)
     return $ T.concat [ "c", h, ".", T.pack a ]
 
+isIpvFutureChar :: Char -> Bool
 isIpvFutureChar c = isUnreserved c || isSubDelims c || (c == ';')
 
 ipv6address :: URIParser Text
@@ -460,47 +432,47 @@ ipv6address = try case1 <|> try case2 <|> try case3 <|> try case4
             a3 <- ls32
             return $ T.append (T.concat a2) a3
         case2 = do
-            string "::"
+            _ <- string "::"
             a2 <- count 5 h4c
             a3 <- ls32
             return $ T.concat [ "::", T.concat a2, a3 ]
         case3 = do
             a1 <- opt_n_h4c_h4 0
-            string "::"
+            _ <- string "::"
             a2 <- count 4 h4c
             a3 <- ls32
             return $ T.concat [ a1, "::", T.concat a2, a3 ]
         case4 = do
             a1 <- opt_n_h4c_h4 1
-            string "::"
+            _ <- string "::"
             a2 <- count 3 h4c
             a3 <- ls32
             return $ T.concat [ a1, "::", T.concat a2, a3 ]
         case5 = do
             a1 <- opt_n_h4c_h4 2
-            string "::"
+            _ <- string "::"
             a2 <- count 2 h4c
             a3 <- ls32
             return $ T.concat [ a1, "::", T.concat a2, a3 ]
         case6 = do
             a1 <- opt_n_h4c_h4 3
-            string "::"
+            _ <- string "::"
             a2 <- h4c
             a3 <- ls32
             return $ T.concat [ a1, "::", a2, a3 ]
         case7 = do
             a1 <- opt_n_h4c_h4 4
-            string "::"
+            _ <- string "::"
             a3 <- ls32
             return $ T.concat [ a1, "::", a3 ]
         case8 = do
             a1 <- opt_n_h4c_h4 5
-            string "::"
+            _ <- string "::"
             a3 <- h4
             return $ T.concat [ a1, "::", a3 ]
         case9 = do
             a1 <- opt_n_h4c_h4 6
-            string "::"
+            _ <- string "::"
             return $ T.append a1 "::"
 
 opt_n_h4c_h4 :: Int -> URIParser Text
@@ -516,7 +488,7 @@ ls32 =  try parseLs32 <|> ipv4address
 h4c :: URIParser Text
 h4c = try $ do
     a1 <- h4
-    char ':'
+    _ <- char ':'
     notFollowedBy (char ':')
     return $ T.snoc a1 ':'
 
@@ -526,19 +498,20 @@ h4 = countMinMax 1 4 hexDigitChar
 ipv4address :: URIParser Text
 ipv4address = do
     a1 <- decOctet
-    char '.'
+    _ <- char '.'
     a2 <- decOctet
-    char '.'
+    _ <- char '.'
     a3 <- decOctet
-    char '.'
+    _ <- char '.'
     a4 <- decOctet
     return $ T.concat [ a1, ".", a2, ".", a3, ".", a4 ]
 
 decOctet :: URIParser Text
 decOctet = do
     a1 <- countMinMax 1 3 digitChar
-    if read (T.unpack a1) > 255 then fail "Decimal octet value too large"
-                                else return a1
+    if read (T.unpack a1) > (255 :: Integer)
+        then fail "Decimal octet value too large"
+        else return a1
 
 regName :: URIParser Text
 regName = countMinMax 0 255 ( unreservedChar <|> escaped <|> subDelims )
@@ -548,7 +521,7 @@ regName = countMinMax 0 255 ( unreservedChar <|> escaped <|> subDelims )
 
 port :: URIParser Text
 port = do
-    char ':'
+    _ <- char ':'
     p <- many digitChar
     return (T.cons ':' (T.concat p))
 
@@ -670,7 +643,7 @@ relativePart = withAuthority
            <|> (Nothing, ) <$> pathNoScheme
            <|> return (Nothing, "")
     where withAuthority = do
-            try (string "//")
+            _ <- try (string "//")
             ua <- uauthority
             up <- pathAbEmpty
             return (ua, up)
@@ -721,9 +694,6 @@ alphaChar = T.singleton <$> satisfy isAlphaChar
 digitChar :: URIParser Text
 digitChar = T.singleton <$> satisfy isDigitChar
 
-alphaNumChar :: URIParser Text
-alphaNumChar = T.singleton <$> satisfy isAlphaNumChar
-
 hexDigitChar :: URIParser Text
 hexDigitChar = T.singleton <$> satisfy isHexDigitChar
 
@@ -737,9 +707,6 @@ oneThenMany p1 pr = do
     a1 <- p1
     ar <- many pr
     return $ T.append a1 (T.concat ar)
-
-countMinMaxC :: Int -> Int -> GenParser t Char -> GenParser t Text
-countMinMaxC m n parser = countMinMax m n (T.singleton <$> parser)
 
 countMinMax :: Int -> Int -> GenParser t Text -> GenParser t Text
 countMinMax m n parser | m > 0 = do
@@ -786,14 +753,14 @@ uriAuthToString _ Nothing   = id          -- shows ""
 uriAuthToString userinfomap
         (Just URIAuth { uriUserInfo = uinfo
                       , uriRegName  = regname
-                      , uriPort     = port
+                      , uriPort     = portNumber
                       } ) = ("//" ++)
                           . (if T.null uinfo
                                 then id
                                 else ((T.unpack $ userinfomap uinfo)++)
                             )
                           . (T.unpack regname ++)
-                          . (T.unpack port ++)
+                          . (T.unpack portNumber ++)
 
 ------------------------------------------------------------
 --  Character classes
@@ -824,8 +791,8 @@ escapeURIChar p c
         myShowHex :: Int -> ShowS
         myShowHex n r =  case showIntAtBase 16 (toChrHex) n r of
             []  -> "00"
-            [c] -> ['0',c]
-            cs  -> cs
+            [aDigit] -> ['0', aDigit]
+            digits  -> digits
         toChrHex d
             | d < 10    = chr (ord '0' + fromIntegral d)
             | otherwise = chr (ord 'A' + fromIntegral (d - 10))
@@ -847,13 +814,13 @@ infixr 5 :<
 pattern b :< bs <- (T.uncons -> Just (b, bs))
 pattern Empty   <- (T.uncons -> Nothing)
 
-
 unEscapeString :: Text -> Text
 unEscapeString Empty = T.empty
 unEscapeString ('%' :< x1 :< x2 :< s) | isHexDigit x1 && isHexDigit x2 =
     T.cons (chr (digitToInt x1 * 16 + digitToInt x2))
            (unEscapeString s)
 unEscapeString (c :< s) = T.cons c (unEscapeString s)
+unEscapeString _ = T.empty
 
 ------------------------------------------------------------
 -- Resolving a relative URI relative to a base URI
@@ -875,9 +842,6 @@ nonStrictRelativeTo ref base = relativeTo ref' base
         ref' = if uriScheme ref == uriScheme base
                then ref { uriScheme="" }
                else ref
-
-isDefined :: ( MonadPlus m, Eq (m a) ) => m a -> Bool
-isDefined a = a /= mzero
 
 -- |Compute an absolute 'URI' for a supplied URI
 --  relative to a given base.
@@ -939,8 +903,8 @@ elimDots ps rs = elimDots ps1 (r:rs)
 
 --  Return tail of non-null list, otherwise return null list
 dropHead :: [a] -> [a]
-dropHead []     = []
-dropHead (r:rs) = rs
+dropHead [] = []
+dropHead (_:rs) = rs
 
 --  Returns the next segment and the rest of the path from a path string.
 --  Each segment ends with the next '/' or the end of string.
@@ -1008,7 +972,7 @@ relativeFrom uabs base
             where (p1,p2) = splitLast p
 
 relPathFrom :: Text -> Text -> Text
-relPathFrom Empty base = "/"
+relPathFrom Empty _ = "/"
 relPathFrom pabs Empty = pabs
 relPathFrom pabs base =                 -- Construct a relative path segments
     if sa1 == sb1                       -- if the paths share a leading segment
@@ -1040,7 +1004,7 @@ relPathFrom1 pabs base = relName
                   else
                       T.append rp na
         -- Precede name with some path if it is null or contains a ':'
-        protect na = T.null na || T.findIndex (== ':') na /= Nothing
+        protect name = T.null name || T.findIndex (== ':') name /= Nothing
 
 --  relSegsFrom discards any common leading segments from both paths,
 --  then invokes difSegsFrom to calculate a relative path from the end
@@ -1091,7 +1055,7 @@ normalizeCase uristr = ncScheme uristr
                                                     , ncEscape cs
                                                     ]
         ncEscape (c :< cs) = T.cons c (ncEscape cs)
-        ncEscape Empty = T.empty
+        ncEscape _ = T.empty
 
 -- |Encoding normalization; cf. RFC3986 section 6.2.2.2
 --
@@ -1101,7 +1065,7 @@ normalizeEscape ('%' :< h1 :< h2 :< cs)
         T.cons escval (normalizeEscape cs)
     where escval = chr (digitToInt h1 * 16 + digitToInt h2)
 normalizeEscape (c :< cs) = T.cons c (normalizeEscape cs)
-normalizeEscape Empty = T.empty
+normalizeEscape _ = T.empty
 
 -- |Path segment normalization; cf. RFC3986 section 6.2.2.4
 --
