@@ -843,6 +843,15 @@ nonStrictRelativeTo ref base = relativeTo ref' base
                then ref { uriScheme="" }
                else ref
 
+mergePaths :: [Text] -> Text
+mergePaths [] = T.empty
+mergePaths [a] = T.dropWhile (== '/') a
+mergePaths (a:b:cs) = T.concat
+    [ T.dropWhileEnd (== '/') a
+    , "/"
+    , mergePaths (b:cs)
+    ]
+
 -- |Compute an absolute 'URI' for a supplied URI
 --  relative to a given base.
 relativeTo :: URI -> URI -> Maybe URI
@@ -861,7 +870,7 @@ relativeTo ref base
             just_segments ref
                 { uriScheme    = uriScheme base
                 , uriAuthority = uriAuthority base
-                , uriPath      = mergePaths base ref
+                , uriPath      = mergeURIsToPath base ref
                 }
     | uriQuery ref /= "" =
         just_segments ref
@@ -878,9 +887,9 @@ relativeTo ref base
             }
     where
         just_segments u = Just $ u { uriPath = removeDotSegments (uriPath u) }
-        mergePaths b r
-            | uriAuthority b /= Nothing && T.null pb = T.cons '/' pr
-            | otherwise = T.append (T.init pb) pr
+        mergeURIsToPath b r
+            | uriAuthority b /= Nothing && T.null pb = mergePaths ["", pr]
+            | otherwise = mergePaths [pb, pr]
             where
                 (pb, pr) = (uriPath b, uriPath r)
 
