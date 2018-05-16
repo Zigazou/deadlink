@@ -18,10 +18,11 @@ then
 fi
 
 req="
-    SELECT   childurl,
+    SELECT   childurl || ' (' || description || ')',
              GROUP_CONCAT(parenturl, '|')
-    FROM     parent, link
+    FROM     parent, link, curl
     WHERE    url = childurl
+    AND      curlcode = code
     AND      httpcode IN (0, 404)
     GROUP BY childurl;
 "

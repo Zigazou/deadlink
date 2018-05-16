@@ -78,7 +78,7 @@ Query examples:
     -- Get dead links and the pages on which they have been found
     SELECT url, parenturl
     FROM   link, parent
-    WHERE  httpcode = 404
+    WHERE  httpcode IN (0, 404)
     AND    childurl = url;
 
 The `code` is prepopulated with HTTP codes and their descriptions ready to be
