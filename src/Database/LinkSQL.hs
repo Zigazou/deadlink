@@ -17,8 +17,6 @@ module Database.LinkSQL
 , getUnparsedHTMLLinks
 , getLastIteration
 , remainingJob
-, startTransaction
-, endTransaction
 )
 where
 
@@ -198,14 +196,6 @@ remainingJob db base = do
     finalize reqLink
 
     return (pageCount, linkCount)
-
--- | Starts a transaction in SQLite3
-startTransaction :: Database -> IO ()
-startTransaction db = exec db "BEGIN;"
-
--- | Ends a transaction in SQLite3
-endTransaction :: Database -> IO ()
-endTransaction db = exec db "END;"
 
 getLastIteration :: Database -> IO Int
 getLastIteration db = do
