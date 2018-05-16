@@ -9,13 +9,19 @@ Building deadlink
 DeadLink has been written in Haskell and is compiled with GHC 7.10. It is
 meant to be run under Linux.
 
-It requires Curl and SQLite3 development libraries.
+It requires **Curl** and **SQLite3** development libraries. Using Debian:
+
+    sudo apt-get install libcurl4-gnutls-dev libsqlite3-dev
 
 To build `deadlink`:
 
+    git clone https://github.com/Zigazou/deadlink.git
+    cd deadlink
+    cabal sandbox init
+    cabal install --only-dependencies
     cabal build
 
-The `deadlink` executable will have been created in `./dist/build/deadlink`.
+The `deadlink` executable is created in `dist/build/deadlink`.
 
 Usage
 -----
