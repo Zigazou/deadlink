@@ -74,7 +74,8 @@ deadlinkIteration dbname iteration base = do
     -- Get unchecked links
     (uncheckedCount, uncheckeds) <- getUncheckedLinks db
 
-    putStr $ "Checking " ++ show uncheckedCount ++ " links"
+    putStr $ "Checking " ++ show uncheckedCount ++ " links... "
+    hFlush stdout
 
     -- Update links states. Operates 50 links by 50 links to save memory.
     actionPartition 50 uncheckeds $ \list -> do
@@ -84,7 +85,8 @@ deadlinkIteration dbname iteration base = do
     -- Check every unparsed HTML page
     (unparsedCount, unparseds) <- getUnparsedHTMLLinks db base
 
-    putStr $ "\nParsing " ++ show unparsedCount ++ " pages"
+    putStr $ "\nParsing " ++ show unparsedCount ++ " pages... "
+    hFlush stdout
 
     -- Update pages states. Operates 50 links by 50 links to save memory.
     actionPartition 50 unparseds $ \list -> do

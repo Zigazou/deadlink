@@ -72,37 +72,42 @@ instance ToFromSQLite3Composite Link where
                                      , SQLNull
                                      , SQLNull
                                      , SQLNull
+                                     , SQLNull
                                      ]
 
-    toSQLite3C (CheckedLink uri rc ct cd) = [ toSQLite3S uri
-                                            , toSQLite3S rc
-                                            , toSQLite3S ct
-                                            , toSQLite3S cd
-                                            , SQLNull
-                                            ]
+    toSQLite3C (CheckedLink uri rc cc ct cd) = [ toSQLite3S uri
+                                               , toSQLite3S rc
+                                               , toSQLite3S cc
+                                               , toSQLite3S ct
+                                               , toSQLite3S cd
+                                               , SQLNull
+                                               ]
 
-    toSQLite3C (ParsedLink uri rc ct pd) = [ toSQLite3S uri
-                                           , toSQLite3S rc
-                                           , toSQLite3S ct
-                                           , SQLNull
-                                           , toSQLite3S pd
-                                           ]
+    toSQLite3C (ParsedLink uri rc cc ct pd) = [ toSQLite3S uri
+                                              , toSQLite3S rc
+                                              , toSQLite3S cc
+                                              , toSQLite3S ct
+                                              , SQLNull
+                                              , toSQLite3S pd
+                                              ]
 
-    fromSQLite3C [urls, rcs, cts, _, SQLText pds] = do
+    fromSQLite3C [urls, rcs, ccs, cts, _, SQLText pds] = do
         uri <- fromSQLite3S urls
         rc <- fromSQLite3S rcs
+        cc <- fromSQLite3S ccs
         ct <- fromSQLite3S cts
         pd <- fromSQLite3S (SQLText pds)
-        return $ ParsedLink uri rc ct pd
+        return $ ParsedLink uri rc cc ct pd
 
-    fromSQLite3C [urls, rcs, cts, SQLText cds, _] = do
+    fromSQLite3C [urls, rcs, ccs, cts, SQLText cds, _] = do
         uri <- fromSQLite3S urls
         rc <- fromSQLite3S rcs
+        cc <- fromSQLite3S ccs
         ct <- fromSQLite3S cts
         cd <- fromSQLite3S (SQLText cds)
-        return $ CheckedLink uri rc ct cd
+        return $ CheckedLink uri rc cc ct cd
 
-    fromSQLite3C [urls, _, _, _, _] = do
+    fromSQLite3C [urls, _, _, _, _, _] = do
         uri <- fromSQLite3S urls
         return $ UncheckedLink uri
 

@@ -12,8 +12,8 @@ A link!
 -}
 module Data.Link
 ( Link ( UncheckedLink, ucURI
-       , CheckedLink, chURI, chHTTPCode, chContentType, chCheckDate
-       , ParsedLink, paURI, paHTTPCode, paContentType, paParseDate
+       , CheckedLink, chURI, chHTTPCode, chCURLCode, chContentType, chCheckDate
+       , ParsedLink, paURI, paHTTPCode, paCURLCode, paContentType, paParseDate
        )
 , linkURI
 , makeLink
@@ -36,11 +36,13 @@ import Data.Time (UTCTime)
 data Link = UncheckedLink { ucURI :: URI }
           | CheckedLink { chURI         :: URI
                         , chHTTPCode    :: Int
+                        , chCURLCode    :: Int
                         , chContentType :: String
                         , chCheckDate   :: UTCTime
                         }
           | ParsedLink { paURI         :: URI
                        , paHTTPCode    :: Int
+                       , paCURLCode    :: Int
                        , paContentType :: String
                        , paParseDate   :: UTCTime
                        }
@@ -48,8 +50,8 @@ data Link = UncheckedLink { ucURI :: URI }
 
 linkURI :: Link -> URI
 linkURI (UncheckedLink uri)     = uri
-linkURI (CheckedLink uri _ _ _) = uri
-linkURI (ParsedLink uri _ _ _)  = uri
+linkURI (CheckedLink uri _ _ _ _) = uri
+linkURI (ParsedLink uri _ _ _ _)  = uri
 
 startswith :: T.Text -> T.Text -> Bool
 startswith needle haystack
@@ -97,9 +99,9 @@ url link = uriToString id (linkURI link) ""
 isReserved :: Link -> Bool
 isReserved (UncheckedLink (URI _ (Just uriAuth) _ _ _)) =
     isReserved_ uriAuth
-isReserved (CheckedLink (URI _ (Just uriAuth) _ _ _) _ _ _) =
+isReserved (CheckedLink (URI _ (Just uriAuth) _ _ _) _ _ _ _) =
     isReserved_ uriAuth
-isReserved (ParsedLink (URI _ (Just uriAuth) _ _ _) _ _ _) =
+isReserved (ParsedLink (URI _ (Just uriAuth) _ _ _) _ _ _ _) =
     isReserved_ uriAuth
 isReserved _ = False
 

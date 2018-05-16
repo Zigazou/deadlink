@@ -8,6 +8,7 @@
 
 CREATE TABLE link ( url TEXT PRIMARY KEY
                   , httpcode INTEGER
+                  , curlcode INTEGER
                   , contenttype TEXT
                   , checkdate TEXT
                   , parsedate TEXT
@@ -19,11 +20,11 @@ CREATE TABLE parent ( parenturl TEXT
                     , PRIMARY KEY (parenturl, childurl)
                     );
 
-CREATE TABLE code ( httpcode INTEGER
+CREATE TABLE http ( code INTEGER
                   , description TEXT
                   );
 
-INSERT INTO code (httpcode, description)
+INSERT INTO http (code, description)
 VALUES (0, 'CURL error')
      , (100, 'Continue')
      , (101, 'Switching Protocols')
@@ -94,3 +95,93 @@ VALUES (0, 'CURL error')
      , (510, 'Not extended')
      , (511, 'Network authentication required')
      , (520, 'Web server is returning an unknown error');
+
+CREATE TABLE curl ( code INTEGER
+                  , description TEXT
+                  );
+
+INSERT INTO curl (code, description)
+VALUES (0, 'OK')
+     , (1, 'Unsupported protocol')
+     , (2, 'Failed init')
+     , (3, 'URL malformat')
+     , (4, 'URL malformat user')
+     , (5, 'Could not resolve proxy')
+     , (6, 'Could not resolve host')
+     , (7, 'Could not connect')
+     , (8, 'FTP weird server reply')
+     , (9, 'FTP access denied')
+     , (10, 'FTP user password incorrect')
+     , (11, 'FTP weird PASS Reply')
+     , (12, 'FTP weird USER Reply')
+     , (13, 'FTP weird PASV reply')
+     , (14, 'FTP weird 227 format')
+     , (15, 'FTP cannot get host')
+     , (16, 'FTP cannot reconnect')
+     , (17, 'FTP could not set binary')
+     , (18, 'Partial file')
+     , (19, 'FTP couldnt retrieve file')
+     , (20, 'FTP write error')
+     , (21, 'FTP quote error')
+     , (22, 'HTTP returned error')
+     , (23, 'Write error')
+     , (24, 'Malformat error')
+     , (25, 'FTP could not store file')
+     , (26, 'Read error')
+     , (27, 'Out of memory')
+     , (28, 'Operation timeout')
+     , (29, 'FTP could not set ASCII')
+     , (30, 'FTP port failed')
+     , (31, 'FTP could not use REST')
+     , (32, 'FTP could not get size')
+     , (33, 'HTTP range error')
+     , (34, 'HTTP post error')
+     , (35, 'SSL connect error')
+     , (36, 'Bad download resume')
+     , (37, 'File could not read file')
+     , (38, 'LDAP cannot bind')
+     , (39, 'LDAP search failed')
+     , (40, 'Library not found')
+     , (41, 'Function not found')
+     , (42, 'Aborted by callback')
+     , (43, 'Bad function argument')
+     , (44, 'Bad calling order')
+     , (45, 'Interface failed')
+     , (46, 'Bad password entered')
+     , (47, 'Too many redirects')
+     , (48, 'Unknown telnet option')
+     , (49, 'Telnet option syntax')
+     , (50, 'Obsolete')
+     , (51, 'SSL peer certificate')
+     , (52, 'Got nothing')
+     , (53, 'SSL engine not found')
+     , (54, 'SSL engine set failed')
+     , (55, 'SEND error')
+     , (56, 'RECV error')
+     , (57, 'Share in use')
+     , (58, 'SSL cert problem')
+     , (59, 'SSL cipher')
+     , (60, 'SSL CA cert')
+     , (61, 'Bad content encoding')
+     , (62, 'LDAP invalid URL')
+     , (63, 'Filesize exceeded')
+     , (64, 'FTP SSL failed')
+     , (65, 'Send fail rewind')
+     , (66, 'SSL engine init failed')
+     , (67, 'Login denied')
+     , (68, 'TFTP not found')
+     , (69, 'TFTP perm')
+     , (70, 'TFTP disk full')
+     , (71, 'TFTP illegal')
+     , (72, 'TFTP unknown id')
+     , (73, 'TFTP exists')
+     , (74, 'TFTP no such user')
+     , (75, 'Conv failed')
+     , (76, 'Conv required')
+     , (77, 'SSL CA cert bad file')
+     , (78, 'Remove file not found')
+     , (79, 'SSH')
+     , (80, 'SSL shutdown failed')
+     , (81, 'Again')
+     , (82, 'SSL CRL bad file')
+     , (83, 'SSL issuer error');

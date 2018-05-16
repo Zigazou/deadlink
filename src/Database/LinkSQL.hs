@@ -32,13 +32,13 @@ import Data.Link (Link, linkURI, url)
 import Database.ToFromSQLite3
 
 linkBinding :: Link -> [ (Text, SQLData ) ]
-linkBinding = zip [":url", ":rc", ":ct", ":cd", ":pd"] . toSQLite3C
+linkBinding = zip [":url", ":rc", ":cc", ":ct", ":cd", ":pd"] . toSQLite3C
 
 insertLink :: Database -> Int -> Link -> Link -> IO StepResult
 insertLink db iteration parent link = do
     -- Insert the link
     reqLink <- prepare db "INSERT OR IGNORE INTO link \
-                          \VALUES (:url, :rc, :ct, :cd, :pd);"
+                          \VALUES (:url, :rc, :cc, :ct, :cd, :pd);"
     bindNamed reqLink (linkBinding link)
     result <- step reqLink
     finalize reqLink
@@ -62,6 +62,7 @@ updateLink :: Database -> Link -> IO StepResult
 updateLink db link = do
     req <- prepare db "UPDATE link \
                       \SET httpcode = :rc, \
+                          \curlcode = :cc, \
                           \contenttype = :ct, \
                           \checkdate = :cd, \
                           \parsedate = :pd \
@@ -78,7 +79,7 @@ populate req = do
     case result of
         Done -> unsafeInterleaveIO (finalize req >> return [])
         Row -> do
-            cols <- mapM (column req . ColumnIndex) [0 .. 4]
+            cols <- mapM (column req . ColumnIndex) [0 .. 5]
             let linkM = fromSQLite3C cols :: Maybe Link
 
             remainingLinks <- unsafeInterleaveIO (populate req)
@@ -94,7 +95,7 @@ getUncheckedLinks db = do
     exec db "DROP TABLE IF EXISTS unchecked;"
 
     exec db "CREATE TEMPORARY TABLE unchecked AS \
-            \SELECT url, httpcode, contenttype, checkdate \
+            \SELECT url, httpcode, curlcode, contenttype, checkdate \
             \FROM link \
             \WHERE checkdate IS NULL \
             \AND   parsedate IS NULL;"
@@ -115,7 +116,11 @@ getUncheckedLinks db = do
     if rowCount == 0
         then return (0, [])
         else do
-            req <- prepare db "SELECT url, httpcode, contenttype, checkdate \
+            req <- prepare db "SELECT url, \
+                                     \httpcode, \
+                                     \curlcode, \
+                                     \contenttype, \
+                                     \checkdate \
                               \FROM unchecked;"
 
             list <- populate req
@@ -128,7 +133,7 @@ getUnparsedHTMLLinks db base = do
     exec db "DROP TABLE IF EXISTS unparsed;"
     
     cre <- prepare db "CREATE TEMPORARY TABLE unparsed AS \
-                      \SELECT url, httpcode, contenttype, checkdate \
+                      \SELECT url, httpcode, curlcode, contenttype, checkdate \
                       \FROM link \
                       \WHERE contenttype LIKE 'text/html%' \
                       \AND   url LIKE :base \
@@ -156,7 +161,11 @@ getUnparsedHTMLLinks db base = do
     if rowCount == 0
         then return (0, [])
         else do
-            req <- prepare db "SELECT url, httpcode, contenttype, checkdate \
+            req <- prepare db "SELECT url, \
+                                     \httpcode, \
+                                     \curlcode, \
+                                     \contenttype, \
+                                     \checkdate \
                               \FROM unparsed;"
 
             list <- populate req

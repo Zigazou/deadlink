@@ -56,6 +56,8 @@ Here’s the database schema:
 
 ![Database schema](db/dbschema.png)
 
+The `http` and `curl` tables are helpers to convert codes to human name.
+
 Query examples:
 
     -- Get number of links in the database

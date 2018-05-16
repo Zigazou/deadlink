@@ -52,7 +52,7 @@ mostuseddeadlink=$(execdb "
     SELECT   childurl
     FROM     parent, link
     WHERE    url = childurl
-    AND      httpcode = 404
+    AND      httpcode IN (0, 404)
     GROUP BY childurl
     HAVING   COUNT(parenturl) > 30;
 ")

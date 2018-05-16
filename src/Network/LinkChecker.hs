@@ -21,6 +21,7 @@ import qualified Data.Text as T
 
 import Network.Curl ( CurlResponse, CurlOption
                     , curlGetResponse_, respHeaders, respStatus, respBody
+                    , respCurlCode
                     )
 
 import Data.Maybe (catMaybes, fromMaybe)
@@ -28,9 +29,9 @@ import Data.Time (getCurrentTime)
 
 import Data.ReferenceExtractor (findReferences)
 import Data.Link
-    ( Link ( UncheckedLink, ucURI
-           , CheckedLink, chURI, chHTTPCode, chContentType, chCheckDate
-           , ParsedLink, paURI, paHTTPCode, paContentType, paParseDate
+    ( Link ( UncheckedLink, CheckedLink, ParsedLink
+           , ucURI, chURI, chHTTPCode, chCURLCode, chContentType, chCheckDate
+           , paURI, paHTTPCode, paCURLCode, paContentType, paParseDate
            )
            , url, absolute, isReserved
     )
@@ -58,6 +59,7 @@ verify options link@(UncheckedLink _)
         checkDate <- getCurrentTime
         return CheckedLink { chURI         = ucURI link
                            , chHTTPCode    = 404
+                           , chCURLCode    = 0
                            , chContentType = ""
                            , chCheckDate   = checkDate
                            }
@@ -67,6 +69,7 @@ verify options link@(UncheckedLink _)
         checkDate <- getCurrentTime
 
         let httpCode = respStatus resp
+            curlCode = fromEnum $ respCurlCode resp
             contentType = case lookup "Content-Type" (respHeaders resp) of
                             Nothing        -> ""
                             Just (' ':str) -> str
@@ -74,6 +77,7 @@ verify options link@(UncheckedLink _)
 
         return CheckedLink { chURI         = ucURI link
                            , chHTTPCode    = httpCode
+                           , chCURLCode    = curlCode
                            , chContentType = contentType
                            , chCheckDate   = checkDate
                            }
@@ -81,10 +85,11 @@ verify _ link = return link
 
 -- | Mark a link as parsed at current time
 parse :: Link -> IO Link
-parse (CheckedLink uri rc ct _) = do
+parse (CheckedLink uri rc cc ct _) = do
     parseDate <- getCurrentTime
     return ParsedLink { paURI         = uri
                       , paHTTPCode    = rc
+                      , paCURLCode    = cc
                       , paContentType = ct
                       , paParseDate   = parseDate
                       }
