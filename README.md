@@ -53,6 +53,8 @@ be specified.
 Querying the database
 ---------------------
 
+### Manual query
+
 The `deadlink` database is a SQLite3 database. Querying it is as simple as
 running:
 
@@ -90,8 +92,12 @@ Query examples:
 The `code` is prepopulated with HTTP codes and their descriptions ready to be
 used in your queries.
 
+### deadlinkstat.bash
+
 The `deadlinkstat.bash` script contains more examples of how to query the
-database.
+database:
+
+    deadlinkstat.bash deadlink.db
 
 Its output looks like:
 
@@ -117,6 +123,27 @@ Its output looks like:
       - text/html; charset=ISO-8859-1: 1
       - text/html; charset=UTF-8: 1
       - text/html; charset=utf-8: 1
+
+### deadlinklist.bash
+
+The `deadlinklist.bash` script list all dead links in a deadlink database:
+
+    deadlinklist.bash deadlink.db
+
+Outputs looks like:
+
+    https://unknownhost.example.com (CURL error, Could not resolve host)
+        https://parentA.example.com
+        https://parentB.example.com
+    https://timeout.example.com (CURL error, Operation timeout)
+        https://parentC.example.com
+        https://parentD.example.com
+    https://::www::example.com (CURL error, URL malformat)
+        https://parentE.example.com
+        https://parentF.example.com
+    https://www.example.com/foobar (Not Found, OK)
+        https://parentG.example.com
+        https://parentH.example.com
 
 Notes
 -----
